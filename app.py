@@ -230,11 +230,17 @@ def get_disk_info():
     return disks
 
 def get_db_connections():
-    conns = {}
+    # Progress usa portas dinamicas para sessoes — contar via _mprshut list
+    conns = {name: 0 for name in PROGRESS_PORTS}
     try:
-        out = subprocess.check_output(['ss', '-tnp'], text=True)
-        for name, port in PROGRESS_PORTS.items():
-            conns[name] = sum(1 for l in out.splitlines() if f':{port}' in l and 'ESTAB' in l)
+        out = subprocess.check_output(['sudo', '/opt/dashboard/list_users.sh'],
+                                      text=True, stderr=subprocess.DEVNULL, timeout=30)
+        for line in out.splitlines():
+            if '|' not in line:
+                continue
+            db = line.split('|', 1)[0].strip()
+            if db in conns:
+                conns[db] += 1
     except:
         pass
     return conns
@@ -242,11 +248,15 @@ def get_db_connections():
 def get_progress_processes():
     procs = []
     try:
-        out = subprocess.check_output(['ps', 'aux'], text=True)
+        out = subprocess.check_output(['ps', 'auxww'], text=True)
         for line in out.splitlines():
             if 'proserve' in line or '_mprosrv' in line:
                 p = line.split()
-                procs.append({'pid': p[1], 'cpu': p[2], 'mem': p[3], 'cmd': ' '.join(p[10:])[:80]})
+                cmd = ' '.join(p[10:])
+                # banco fica no path: /bancos/DATABASE-JA-8380/<nome>
+                db_match = re.search(r'/bancos/[^/]+/(\w+)', cmd)
+                banco = db_match.group(1) if db_match else ''
+                procs.append({'pid': p[1], 'cpu': p[2], 'mem': p[3], 'banco': banco, 'cmd': cmd[:120]})
     except:
         pass
     return procs

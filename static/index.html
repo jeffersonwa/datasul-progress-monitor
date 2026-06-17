@@ -186,7 +186,7 @@ canvas { max-height: 120px; }
   <div class="card" style="grid-column: span 2">
     <h2>Processos Progress (proserve)</h2>
     <table>
-      <tr><th>PID</th><th>CPU%</th><th>MEM%</th><th>Comando</th></tr>
+      <tr><th>PID</th><th>CPU%</th><th>MEM%</th><th>Banco</th><th>Comando</th></tr>
       <tbody id="proc-table"></tbody>
     </table>
   </div>
@@ -419,9 +419,24 @@ async function refresh() {
     if (!d.progress_processes.length) {
       procTbody.innerHTML = '<tr><td colspan="4" style="color:#8b949e">Nenhum processo proserve encontrado</td></tr>';
     } else {
-      procTbody.innerHTML = d.progress_processes.map(p =>
-        `<tr><td>${p.pid}</td><td>${p.cpu}%</td><td>${p.mem}%</td><td style="font-size:10px">${p.cmd}</td></tr>`
-      ).join('');
+      // agrupar por banco
+      const byBanco = {};
+      for (const p of d.progress_processes) {
+        const b = p.banco || '(broker)';
+        if (!byBanco[b]) byBanco[b] = [];
+        byBanco[b].push(p);
+      }
+      procTbody.innerHTML = Object.entries(byBanco).sort().map(([banco, procs]) => {
+        const cpuTotal = procs.reduce((s,p)=>s+parseFloat(p.cpu||0),0).toFixed(1);
+        const memTotal = procs.reduce((s,p)=>s+parseFloat(p.mem||0),0).toFixed(1);
+        return `<tr>
+          <td>${procs.map(p=>p.pid).join(', ')}</td>
+          <td>${cpuTotal}%</td>
+          <td>${memTotal}%</td>
+          <td><b>${banco}</b></td>
+          <td style="font-size:10px;color:#8b949e">${procs.length} processo(s)</td>
+        </tr>`;
+      }).join('');
     }
 
     document.getElementById('ts').textContent = 'Última atualização: ' + new Date().toLocaleTimeString('pt-BR');
