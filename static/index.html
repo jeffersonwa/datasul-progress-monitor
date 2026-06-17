@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Monitor - db-progress001 | JA 8380</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0d1117; color: #e6edf3; font-family: 'Segoe UI', sans-serif; padding: 16px; }
+  h1 { font-size: 18px; color: #58a6ff; margin-bottom: 4px; }
+  .subtitle { font-size: 12px; color: #8b949e; margin-bottom: 16px; }
+  #status { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 12px; background: #238636; color: #fff; margin-left: 8px; }
+  #status.offline { background: #da3633; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
+  .card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 16px; }
+  .card h2 { font-size: 13px; color: #8b949e; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
+  .gauge-row { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+  .gauge-label { width: 70px; font-size: 12px; color: #8b949e; }
+  .gauge-bar { flex: 1; height: 8px; background: #21262d; border-radius: 4px; overflow: hidden; }
+  .gauge-fill { height: 100%; border-radius: 4px; transition: width 0.5s; }
+  .gauge-fill.ok { background: #238636; }
+  .gauge-fill.warn { background: #d29922; }
+  .gauge-fill.crit { background: #da3633; }
+  .gauge-val { width: 45px; font-size: 12px; text-align: right; font-weight: 600; }
+  .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .stat { background: #0d1117; border-radius: 6px; padding: 10px; }
+  .stat .val { font-size: 22px; font-weight: 700; color: #58a6ff; }
+  .stat .lbl { font-size: 11px; color: #8b949e; margin-top: 2px; }
+  table { width: 100%; font-size: 11px; border-collapse: collapse; }
+  th { color: #8b949e; font-weight: 500; text-align: left; padding: 4px 6px; border-bottom: 1px solid #21262d; }
+  td { padding: 4px 6px; border-bottom: 1px solid #161b22; color: #c9d1d9; }
+  tr:hover td { background: #21262d; }
+  .badge { display: inline-block; padding: 1px 6px; border-radius: 10px; font-size: 10px; font-weight: 600; }
+  .badge.up { background: #0f3d1f; color: #3fb950; }
+  .badge.idle { background: #1c2128; color: #8b949e; }
+  canvas { max-height: 120px; }
+  #ts { font-size: 11px; color: #8b949e; margin-top: 12px; }
+</style>
+</head>
+<body>
+
+<h1>Monitor Datasul/Progress <span id="status">ONLINE</span></h1>
+<div class="subtitle">db-progress001 (192.168.7.9) &mdash; Atualiza a cada 5 segundos</div>
+
+<div class="grid">
+
+  <!-- CPU -->
+  <div class="card">
+    <h2>CPU</h2>
+    <div class="gauge-row">
+      <div class="gauge-label">Total</div>
+      <div class="gauge-bar"><div class="gauge-fill ok" id="cpu-bar" style="width:0%"></div></div>
+      <div class="gauge-val" id="cpu-val">--</div>
+    </div>
+    <div class="stat-grid" style="margin-top:10px">
+      <div class="stat"><div class="val" id="load1">--</div><div class="lbl">Load 1min</div></div>
+      <div class="stat"><div class="val" id="load5">--</div><div class="lbl">Load 5min</div></div>
+      <div class="stat"><div class="val" id="load15">--</div><div class="lbl">Load 15min</div></div>
+      <div class="stat"><div class="val" id="cpu-cores">--</div><div class="lbl">Núcleos</div></div>
+    </div>
+    <canvas id="cpuChart" style="margin-top:12px"></canvas>
+  </div>
+
+  <!-- Memória -->
+  <div class="card">
+    <h2>Memória & Swap</h2>
+    <div class="gauge-row">
+      <div class="gauge-label">RAM</div>
+      <div class="gauge-bar"><div class="gauge-fill ok" id="mem-bar" style="width:0%"></div></div>
+      <div class="gauge-val" id="mem-val">--</div>
+    </div>
+    <div class="gauge-row">
+      <div class="gauge-label">Swap</div>
+      <div class="gauge-bar"><div class="gauge-fill ok" id="swap-bar" style="width:0%"></div></div>
+      <div class="gauge-val" id="swap-val">--</div>
+    </div>
+    <div class="stat-grid" style="margin-top:10px">
+      <div class="stat"><div class="val" id="mem-used">--</div><div class="lbl">RAM Usada (GB)</div></div>
+      <div class="stat"><div class="val" id="mem-total">--</div><div class="lbl">RAM Total (GB)</div></div>
+      <div class="stat"><div class="val" id="swap-used">--</div><div class="lbl">Swap Usada (GB)</div></div>
+      <div class="stat"><div class="val" id="swap-total">--</div><div class="lbl">Swap Total (GB)</div></div>
+    </div>
+    <canvas id="memChart" style="margin-top:12px"></canvas>
+  </div>
+
+  <!-- Disco -->
+  <div class="card">
+    <h2>Disco</h2>
+    <div id="disk-bars"></div>
+  </div>
+
+  <!-- Bancos Progress -->
+  <div class="card" style="grid-column: span 2">
+    <h2>Bancos Progress (Conexões TCP Ativas)</h2>
+    <table>
+      <tr><th>Banco</th><th>Porta</th><th>Conexões</th><th>Status</th></tr>
+      <tbody id="db-table"></tbody>
+    </table>
+  </div>
+
+  <!-- Processos Progress -->
+  <div class="card" style="grid-column: span 2">
+    <h2>Processos Progress (proserve)</h2>
+    <table>
+      <tr><th>PID</th><th>CPU%</th><th>MEM%</th><th>Comando</th></tr>
+      <tbody id="proc-table"></tbody>
+    </table>
+  </div>
+
+</div>
+
+<div id="ts">Última atualização: --</div>
+
+<script>
+const API = '/api/metrics';
+const MAX_POINTS = 30;
+
+function mkChart(id, label, color) {
+  const ctx = document.getElementById(id).getContext('2d');
+  return new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: Array(MAX_POINTS).fill(''),
+      datasets: [{ label, data: Array(MAX_POINTS).fill(null), borderColor: color,
+        backgroundColor: color + '22', borderWidth: 1.5, fill: true,
+        tension: 0.3, pointRadius: 0 }]
+    },
+    options: {
+      animation: false, responsive: true, maintainAspectRatio: false,
+      scales: {
+        x: { display: false },
+        y: { min: 0, max: 100, display: true, ticks: { color: '#8b949e', font: { size: 10 } },
+             grid: { color: '#21262d' } }
+      },
+      plugins: { legend: { display: false } }
+    }
+  });
+}
+
+const cpuChart = mkChart('cpuChart', 'CPU %', '#58a6ff');
+const memChart = mkChart('memChart', 'RAM %', '#3fb950');
+
+function push(chart, val) {
+  chart.data.datasets[0].data.push(val);
+  chart.data.datasets[0].data.shift();
+  chart.update('none');
+}
+
+function colorClass(pct) {
+  return pct >= 90 ? 'crit' : pct >= 75 ? 'warn' : 'ok';
+}
+
+function setGauge(barId, valId, pct, label) {
+  const bar = document.getElementById(barId);
+  bar.style.width = pct + '%';
+  bar.className = 'gauge-fill ' + colorClass(pct);
+  document.getElementById(valId).textContent = label || pct + '%';
+}
+
+async function refresh() {
+  try {
+    const r = await fetch(API);
+    if (!r.ok) throw new Error('err');
+    const d = await r.json();
+
+    document.getElementById('status').textContent = 'ONLINE';
+    document.getElementById('status').className = '';
+
+    // CPU
+    setGauge('cpu-bar', 'cpu-val', d.cpu.percent, d.cpu.percent + '%');
+    push(cpuChart, d.cpu.percent);
+    document.getElementById('load1').textContent = d.load_avg[0].toFixed(2);
+    document.getElementById('load5').textContent = d.load_avg[1].toFixed(2);
+    document.getElementById('load15').textContent = d.load_avg[2].toFixed(2);
+    document.getElementById('cpu-cores').textContent = d.cpu.count;
+
+    // Memória
+    setGauge('mem-bar', 'mem-val', d.memory.percent, d.memory.percent + '%');
+    setGauge('swap-bar', 'swap-val', d.swap.percent, d.swap.percent + '%');
+    push(memChart, d.memory.percent);
+    document.getElementById('mem-used').textContent = d.memory.used_gb;
+    document.getElementById('mem-total').textContent = d.memory.total_gb;
+    document.getElementById('swap-used').textContent = d.swap.used_gb;
+    document.getElementById('swap-total').textContent = d.swap.total_gb;
+
+    // Disco
+    const diskDiv = document.getElementById('disk-bars');
+    diskDiv.innerHTML = d.disk.map(dk =>
+      `<div class="gauge-row">
+        <div class="gauge-label" title="${dk.mount}">${dk.mount.length > 8 ? dk.mount.slice(-8) : dk.mount}</div>
+        <div class="gauge-bar"><div class="gauge-fill ${colorClass(dk.percent)}" style="width:${dk.percent}%"></div></div>
+        <div class="gauge-val" style="color:${dk.percent>=90?'#da3633':dk.percent>=75?'#d29922':'#3fb950'}">${dk.percent}%</div>
+      </div>
+      <div style="font-size:10px;color:#8b949e;margin-bottom:6px;padding-left:82px">${dk.used_gb}GB / ${dk.total_gb}GB</div>`
+    ).join('');
+
+    // Bancos
+    const dbTbody = document.getElementById('db-table');
+    dbTbody.innerHTML = '';
+    for (const [name, conns] of Object.entries(d.db_connections).sort()) {
+      const tr = document.createElement('tr');
+      const port = {'ems2adt':23600,'ems2cad':23601,'ems2mov':23602,'ems2mp':23603,
+                    'ems5cad':23606,'ems5mov':23607,'hcm':23608,'emsfnd':23619,
+                    'eai':23621,'dtviewer':23650,'emsdes':23635,'broker':23009}[name] || '--';
+      tr.innerHTML = `<td><b>${name}</b></td><td>${port}</td><td>${conns}</td>
+        <td><span class="badge ${conns>0?'up':'idle'}">${conns>0?'ATIVO':'IDLE'}</span></td>`;
+      dbTbody.appendChild(tr);
+    }
+
+    // Processos
+    const procTbody = document.getElementById('proc-table');
+    procTbody.innerHTML = '';
+    if (d.progress_processes.length === 0) {
+      procTbody.innerHTML = '<tr><td colspan="4" style="color:#8b949e">Nenhum processo proserve encontrado</td></tr>';
+    } else {
+      d.progress_processes.forEach(p => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${p.pid}</td><td>${p.cpu}%</td><td>${p.mem}%</td><td style="font-size:10px">${p.cmd}</td>`;
+        procTbody.appendChild(tr);
+      });
+    }
+
+    const now = new Date();
+    document.getElementById('ts').textContent = 'Última atualização: ' + now.toLocaleTimeString('pt-BR');
+
+  } catch(e) {
+    document.getElementById('status').textContent = 'OFFLINE';
+    document.getElementById('status').className = 'offline';
+  }
+}
+
+refresh();
+setInterval(refresh, 5000);
+</script>
+</body>
+</html>

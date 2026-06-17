@@ -1,0 +1,14 @@
+[Unit]
+Description=Monitor Datasul Progress Dashboard
+After=network.target
+
+[Service]
+Type=simple
+User=ti
+WorkingDirectory=/opt/dashboard
+ExecStart=/usr/bin/python3 /opt/dashboard/app.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
