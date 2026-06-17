@@ -17,6 +17,13 @@ PROGRESS_PORTS = {
 }
 BKP_LOG_DIR = '/mnt/backup-progress/Backup-Progress/pp/logs'
 
+PROGRESS_PORTS_8580 = {
+    'dtviewer': 25650, 'eai': 25621, 'ems2adt': 25600, 'ems2cad': 25601,
+    'ems2mov': 25602, 'ems2mp': 25603, 'ems5cad': 25606, 'ems5mov': 25607,
+    'emsdes': 25635, 'emsfnd': 25619, 'emsinc': 25009, 'hcm': 25608
+}
+DB_DIR_8580 = '/bancos/DATABASE-JA-8580'
+
 # ── banco de usuarios ─────────────────────────────────────────────────────────
 def db_conn():
     c = sqlite3.connect(DB_PATH)
@@ -282,6 +289,118 @@ def get_progress_processes():
 
 DB_DIR = '/bancos/DATABASE-JA-8380'
 
+def get_db_connections_8580():
+    conns = {name: 0 for name in PROGRESS_PORTS_8580}
+    try:
+        out = subprocess.check_output(['sudo', '/opt/dashboard/list_users_8580.sh'],
+                                      text=True, stderr=subprocess.DEVNULL, timeout=30)
+        for line in out.splitlines():
+            if '|' not in line:
+                continue
+            db = line.split('|', 1)[0].strip()
+            if db in conns:
+                conns[db] += 1
+    except:
+        pass
+    return conns
+
+def get_progress_users_8580():
+    users = []
+    seen  = set()
+    try:
+        out = subprocess.check_output(['sudo', '/opt/dashboard/list_users_8580.sh'],
+                                      text=True, stderr=subprocess.DEVNULL, timeout=30)
+        for line in out.splitlines():
+            if '|' not in line:
+                continue
+            db, rest = line.split('|', 1)
+            u = parse_mprshut_line(db, rest)
+            if not u:
+                continue
+            key = f"{db}_{u['usr_num']}_{u['pid']}"
+            if key in seen:
+                continue
+            seen.add(key)
+            users.append(u)
+    except:
+        pass
+    return sorted(users, key=lambda x: (x['usuario'], x['db']))
+
+def get_progress_processes_8580():
+    procs = []
+    try:
+        for proc in psutil.process_iter(['pid', 'name', 'cmdline', 'cpu_percent', 'memory_percent']):
+            try:
+                name = proc.info['name'] or ''
+                if '_mprosrv' not in name and 'proserve' not in name:
+                    continue
+                cmd = ' '.join(proc.info['cmdline'] or [])
+                if 'DATABASE-JA-8580' not in cmd:
+                    continue
+                db_match = re.search(r'/bancos/DATABASE-JA-8580/(\w+)', cmd)
+                banco = db_match.group(1) if db_match else ''
+                procs.append({
+                    'pid': str(proc.info['pid']),
+                    'cpu': round(proc.info['cpu_percent'], 1),
+                    'mem': round(proc.info['memory_percent'], 1),
+                    'banco': banco,
+                    'cmd': cmd[:120]
+                })
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                pass
+    except:
+        pass
+    return procs
+
+def get_db_resources_8580():
+    banks = list(PROGRESS_PORTS_8580.keys())
+    resources = {}
+    for banco in banks:
+        size_mb = 0
+        try:
+            for ext in ['.db', '.bi', '.ai', '.lg']:
+                f = os.path.join(DB_DIR_8580, banco + ext)
+                if os.path.exists(f):
+                    size_mb += os.path.getsize(f) / (1024 * 1024)
+        except:
+            pass
+        resources[banco] = {'cpu': 0.0, 'mem_mb': 0.0, 'io_read_mb': 0.0, 'io_write_mb': 0.0,
+                            'size_mb': round(size_mb, 1), 'pids': []}
+    for proc in psutil.process_iter(['pid', 'name', 'cmdline', 'cpu_percent',
+                                     'memory_info', 'io_counters']):
+        try:
+            name = proc.info['name'] or ''
+            if '_mprosrv' not in name and 'proserve' not in name:
+                continue
+            cmd = ' '.join(proc.info['cmdline'] or [])
+            db_match = re.search(r'/bancos/DATABASE-JA-8580/(\w+)', cmd)
+            if not db_match:
+                continue
+            banco = db_match.group(1)
+            if banco not in resources:
+                continue
+            resources[banco]['cpu']    += proc.info['cpu_percent'] or 0
+            resources[banco]['mem_mb'] += (proc.info['memory_info'].rss / (1024*1024)) if proc.info['memory_info'] else 0
+            resources[banco]['pids'].append(proc.info['pid'])
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            pass
+    try:
+        io_out = subprocess.check_output(['sudo', '/opt/dashboard/db_io_8580.sh'],
+                                         text=True, stderr=subprocess.DEVNULL, timeout=10)
+        for line in io_out.splitlines():
+            parts = line.strip().split('|')
+            if len(parts) == 3 and parts[0] in resources:
+                resources[parts[0]]['io_read_mb']  += int(parts[1]) / (1024*1024)
+                resources[parts[0]]['io_write_mb'] += int(parts[2]) / (1024*1024)
+    except Exception:
+        pass
+    for v in resources.values():
+        v['cpu']         = round(v['cpu'], 1)
+        v['mem_mb']      = round(v['mem_mb'], 1)
+        v['io_read_mb']  = round(v['io_read_mb'], 1)
+        v['io_write_mb'] = round(v['io_write_mb'], 1)
+    return resources
+
 def get_db_resources():
     banks = list(PROGRESS_PORTS.keys())
     resources = {}
@@ -397,6 +516,115 @@ def kick_user():
             return jsonify({'ok': False, 'msg': f'Nenhuma sessao encontrada para {usuario}'})
     except Exception as e:
         return jsonify({'ok': False, 'msg': str(e)}), 500
+
+@app.route('/api/metrics-8580')
+@login_required
+def metrics_8580():
+    vm = psutil.virtual_memory()
+    sw = psutil.swap_memory()
+    return jsonify({
+        'timestamp': time.time(),
+        'cpu': (lambda pc: {'percent': round(sum(pc)/len(pc),1), 'per_core': pc, 'count': psutil.cpu_count()})(psutil.cpu_percent(interval=0.5, percpu=True)),
+        'memory': {'total_gb': round(vm.total/1e9,1), 'used_gb': round(vm.used/1e9,1), 'available_gb': round(vm.available/1e9,1), 'percent': vm.percent},
+        'swap': {'total_gb': round(sw.total/1e9,1), 'used_gb': round(sw.used/1e9,1), 'percent': sw.percent},
+        'disk': get_disk_info(), 'load_avg': list(os.getloadavg()),
+        'progress_processes': get_progress_processes_8580(), 'db_connections': get_db_connections_8580()
+    })
+
+@app.route('/api/users-8580')
+@login_required
+def users_8580():
+    u = get_progress_users_8580()
+    return jsonify({'total': len(u), 'users': u})
+
+@app.route('/api/backup-status-8580')
+@login_required
+def backup_status_8580():
+    return jsonify(get_backup_status())
+
+@app.route('/api/db-resources-8580')
+@login_required
+def db_resources_8580():
+    return jsonify(get_db_resources_8580())
+
+@app.route('/api/kick-user-8580', methods=['POST'])
+@login_required
+def kick_user_8580():
+    if session.get('perfil') != 'admin':
+        return jsonify({'ok': False, 'msg': 'Apenas administradores podem derrubar usuarios'}), 403
+    data    = request.json
+    usuario = data.get('usuario', '')
+    if not usuario:
+        return jsonify({'ok': False, 'msg': 'usuario obrigatorio'}), 400
+    try:
+        out   = subprocess.check_output(['sudo', '/opt/dashboard/kick_user_8580.sh', usuario],
+                                        text=True, stderr=subprocess.STDOUT, timeout=60)
+        linhas = [l for l in out.splitlines() if l.strip()]
+        oks    = [l for l in linhas if l.startswith('OK:')]
+        erros  = [l for l in linhas if l.startswith('ERRO:')]
+        if oks:
+            bancos = [l.split(':')[1] for l in oks]
+            msg = f"Usuario {usuario} desconectado de {len(oks)} banco(s): {', '.join(bancos)}"
+            return jsonify({'ok': True, 'msg': msg})
+        elif erros:
+            return jsonify({'ok': False, 'msg': erros[0]})
+        else:
+            return jsonify({'ok': False, 'msg': f'Nenhuma sessao encontrada para {usuario}'})
+    except Exception as e:
+        return jsonify({'ok': False, 'msg': str(e)}), 500
+
+import shlex
+
+BANCO_SCRIPTS = {
+    '8380': {
+        'derruba': '/opt/dashboard/derruba_8380.sh',
+        'inicia':  '/opt/dashboard/carga_8380.sh',
+    },
+    '8580': {
+        'derruba':  '/opt/dashboard/derruba_8580.sh',
+        'inicia':   '/opt/dashboard/carga_8580.sh',
+        'atualiza': '/opt/dashboard/atualiza_8580.sh',
+    }
+}
+
+_banco_job = {}  # env -> {'status','log','started'}
+
+@app.route('/api/banco-action', methods=['POST'])
+@login_required
+def banco_action():
+    if session.get('perfil') != 'admin':
+        return jsonify({'ok': False, 'msg': 'Apenas administradores podem executar esta acao'}), 403
+    data   = request.json or {}
+    env    = data.get('env', '')
+    action = data.get('action', '')
+    if env not in BANCO_SCRIPTS or action not in BANCO_SCRIPTS[env]:
+        return jsonify({'ok': False, 'msg': 'Acao ou ambiente invalido'}), 400
+    script = BANCO_SCRIPTS[env][action]
+    job_key = f"{env}_{action}"
+    if _banco_job.get(job_key, {}).get('status') == 'running':
+        return jsonify({'ok': False, 'msg': f'Ja existe um processo {action} {env} em execucao'}), 409
+    def _run():
+        _banco_job[job_key] = {'status': 'running', 'log': [], 'started': time.strftime('%H:%M:%S')}
+        try:
+            proc = subprocess.Popen(['sudo', script], stdout=subprocess.PIPE,
+                                    stderr=subprocess.STDOUT, text=True)
+            for line in proc.stdout:
+                _banco_job[job_key]['log'].append(line.rstrip())
+            proc.wait()
+            _banco_job[job_key]['status'] = 'ok' if proc.returncode == 0 else 'erro'
+        except Exception as e:
+            _banco_job[job_key]['status'] = 'erro'
+            _banco_job[job_key]['log'].append(str(e))
+    threading.Thread(target=_run, daemon=True).start()
+    return jsonify({'ok': True, 'msg': f'Iniciado: {action} {env}', 'job': job_key})
+
+@app.route('/api/banco-job/<job_key>')
+@login_required
+def banco_job_status(job_key):
+    job = _banco_job.get(job_key)
+    if not job:
+        return jsonify({'status': 'idle', 'log': []})
+    return jsonify({'status': job['status'], 'log': job['log'], 'started': job.get('started','')})
 
 @app.route('/')
 @login_required
