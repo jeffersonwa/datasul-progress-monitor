@@ -167,10 +167,14 @@ canvas { max-height: 120px; }
   <!-- Usuários Logados -->
   <div class="card" style="grid-column: span 2">
     <h2>Usuários Conectados <span class="counter-badge" id="user-count">0</span></h2>
-    <table>
-      <tr><th>Usuário</th><th>Tipo</th><th>Workstation</th><th>Hora Login</th><th>Bancos</th><th>Ação</th></tr>
+    <div style="max-height:260px;overflow-y:auto;border-radius:6px;border:1px solid #21262d;">
+    <table style="margin:0">
+      <thead style="position:sticky;top:0;background:#161b22;z-index:1">
+        <tr><th>Usuário</th><th>Tipo</th><th>Workstation</th><th>Hora Login</th><th>Bancos</th><th>Ação</th></tr>
+      </thead>
       <tbody id="user-table"></tbody>
     </table>
+    </div>
   </div>
 
   <!-- Bancos Progress -->
