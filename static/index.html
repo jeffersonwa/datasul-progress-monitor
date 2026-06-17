@@ -1233,9 +1233,11 @@ function switchTab(tab) {
   } else if (tab === 'hml8480') {
     document.querySelectorAll('.tab')[1].classList.add('active');
     document.getElementById('tab-hml8480').classList.add('active');
+    cpuChart8480.resize(); memChart8480.resize();
   } else if (tab === 'hml8580') {
     document.querySelectorAll('.tab')[2].classList.add('active');
     document.getElementById('tab-hml8580').classList.add('active');
+    cpuChart8580.resize(); memChart8580.resize();
   } else {
     document.getElementById('tab-usuarios').classList.add('active');
     document.getElementById('tab-usuarios-content').classList.add('active');

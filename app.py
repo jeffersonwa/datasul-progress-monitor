@@ -56,16 +56,32 @@ def init_db():
 
 init_db()
 
-# primer inicial do cpu_percent por processo (primeiro call retorna 0)
-def _prime_cpu():
-    try:
-        for p in psutil.process_iter(['name', 'cpu_percent']):
-            pass
-    except Exception:
-        pass
-
 import threading
-threading.Thread(target=_prime_cpu, daemon=True).start()
+
+# cache de metricas do sistema atualizado a cada 3s em background
+_sys_metrics = {}
+_sys_metrics_lock = threading.Lock()
+
+def _update_sys_metrics():
+    # primer inicial do cpu_percent (primeiro call retorna 0)
+    psutil.cpu_percent(interval=None, percpu=True)
+    for p in psutil.process_iter(['name', 'cpu_percent']):
+        pass
+    while True:
+        try:
+            pc = psutil.cpu_percent(interval=2, percpu=True)
+            vm = psutil.virtual_memory()
+            sw = psutil.swap_memory()
+            with _sys_metrics_lock:
+                _sys_metrics['cpu']      = {'percent': round(sum(pc)/len(pc), 1), 'per_core': pc, 'count': psutil.cpu_count()}
+                _sys_metrics['memory']   = {'total_gb': round(vm.total/1e9,1), 'used_gb': round(vm.used/1e9,1), 'available_gb': round(vm.available/1e9,1), 'percent': vm.percent}
+                _sys_metrics['swap']     = {'total_gb': round(sw.total/1e9,1), 'used_gb': round(sw.used/1e9,1), 'percent': sw.percent}
+                _sys_metrics['load_avg'] = list(os.getloadavg())
+                _sys_metrics['disk']     = get_disk_info()
+        except Exception:
+            pass
+
+threading.Thread(target=_update_sys_metrics, daemon=True).start()
 
 # ── auth helpers ──────────────────────────────────────────────────────────────
 def login_required(f):
@@ -580,19 +596,24 @@ def get_db_resources():
     return resources
 
 # ── api protegida ─────────────────────────────────────────────────────────────
+def _base_metrics():
+    with _sys_metrics_lock:
+        return {
+            'timestamp':  time.time(),
+            'cpu':        _sys_metrics.get('cpu',      {'percent':0,'per_core':[],'count':0}),
+            'memory':     _sys_metrics.get('memory',   {'total_gb':0,'used_gb':0,'available_gb':0,'percent':0}),
+            'swap':       _sys_metrics.get('swap',     {'total_gb':0,'used_gb':0,'percent':0}),
+            'load_avg':   _sys_metrics.get('load_avg', [0,0,0]),
+            'disk':       _sys_metrics.get('disk',     []),
+        }
+
 @app.route('/api/metrics')
 @login_required
 def metrics():
-    vm = psutil.virtual_memory()
-    sw = psutil.swap_memory()
-    return jsonify({
-        'timestamp': time.time(),
-        'cpu': (lambda pc: {'percent': round(sum(pc)/len(pc),1), 'per_core': pc, 'count': psutil.cpu_count()})(psutil.cpu_percent(interval=0.5, percpu=True)),
-        'memory': {'total_gb': round(vm.total/1e9,1), 'used_gb': round(vm.used/1e9,1), 'available_gb': round(vm.available/1e9,1), 'percent': vm.percent},
-        'swap': {'total_gb': round(sw.total/1e9,1), 'used_gb': round(sw.used/1e9,1), 'percent': sw.percent},
-        'disk': get_disk_info(), 'load_avg': list(os.getloadavg()),
-        'progress_processes': get_progress_processes(), 'db_connections': get_db_connections()
-    })
+    d = _base_metrics()
+    d['progress_processes'] = get_progress_processes()
+    d['db_connections']     = get_db_connections()
+    return jsonify(d)
 
 @app.route('/api/users')
 @login_required
@@ -639,16 +660,10 @@ def kick_user():
 @app.route('/api/metrics-8480')
 @login_required
 def metrics_8480():
-    vm = psutil.virtual_memory()
-    sw = psutil.swap_memory()
-    return jsonify({
-        'timestamp': time.time(),
-        'cpu': (lambda pc: {'percent': round(sum(pc)/len(pc),1), 'per_core': pc, 'count': psutil.cpu_count()})(psutil.cpu_percent(interval=0.5, percpu=True)),
-        'memory': {'total_gb': round(vm.total/1e9,1), 'used_gb': round(vm.used/1e9,1), 'available_gb': round(vm.available/1e9,1), 'percent': vm.percent},
-        'swap': {'total_gb': round(sw.total/1e9,1), 'used_gb': round(sw.used/1e9,1), 'percent': sw.percent},
-        'disk': get_disk_info(), 'load_avg': list(os.getloadavg()),
-        'progress_processes': get_progress_processes_8480(), 'db_connections': get_db_connections_8480()
-    })
+    d = _base_metrics()
+    d['progress_processes'] = get_progress_processes_8480()
+    d['db_connections']     = get_db_connections_8480()
+    return jsonify(d)
 
 @app.route('/api/users-8480')
 @login_required
@@ -694,16 +709,10 @@ def kick_user_8480():
 @app.route('/api/metrics-8580')
 @login_required
 def metrics_8580():
-    vm = psutil.virtual_memory()
-    sw = psutil.swap_memory()
-    return jsonify({
-        'timestamp': time.time(),
-        'cpu': (lambda pc: {'percent': round(sum(pc)/len(pc),1), 'per_core': pc, 'count': psutil.cpu_count()})(psutil.cpu_percent(interval=0.5, percpu=True)),
-        'memory': {'total_gb': round(vm.total/1e9,1), 'used_gb': round(vm.used/1e9,1), 'available_gb': round(vm.available/1e9,1), 'percent': vm.percent},
-        'swap': {'total_gb': round(sw.total/1e9,1), 'used_gb': round(sw.used/1e9,1), 'percent': sw.percent},
-        'disk': get_disk_info(), 'load_avg': list(os.getloadavg()),
-        'progress_processes': get_progress_processes_8580(), 'db_connections': get_db_connections_8580()
-    })
+    d = _base_metrics()
+    d['progress_processes'] = get_progress_processes_8580()
+    d['db_connections']     = get_db_connections_8580()
+    return jsonify(d)
 
 @app.route('/api/users-8580')
 @login_required
