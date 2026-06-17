@@ -6,36 +6,52 @@
 <title>Monitor - db-progress001 | JA 8380</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: #0d1117; color: #e6edf3; font-family: 'Segoe UI', sans-serif; padding: 16px; }
-  h1 { font-size: 18px; color: #58a6ff; margin-bottom: 4px; }
-  .subtitle { font-size: 12px; color: #8b949e; margin-bottom: 16px; }
-  #status { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 12px; background: #238636; color: #fff; margin-left: 8px; }
-  #status.offline { background: #da3633; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
-  .card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 16px; }
-  .card h2 { font-size: 13px; color: #8b949e; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
-  .gauge-row { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
-  .gauge-label { width: 70px; font-size: 12px; color: #8b949e; }
-  .gauge-bar { flex: 1; height: 8px; background: #21262d; border-radius: 4px; overflow: hidden; }
-  .gauge-fill { height: 100%; border-radius: 4px; transition: width 0.5s; }
-  .gauge-fill.ok { background: #238636; }
-  .gauge-fill.warn { background: #d29922; }
-  .gauge-fill.crit { background: #da3633; }
-  .gauge-val { width: 45px; font-size: 12px; text-align: right; font-weight: 600; }
-  .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .stat { background: #0d1117; border-radius: 6px; padding: 10px; }
-  .stat .val { font-size: 22px; font-weight: 700; color: #58a6ff; }
-  .stat .lbl { font-size: 11px; color: #8b949e; margin-top: 2px; }
-  table { width: 100%; font-size: 11px; border-collapse: collapse; }
-  th { color: #8b949e; font-weight: 500; text-align: left; padding: 4px 6px; border-bottom: 1px solid #21262d; }
-  td { padding: 4px 6px; border-bottom: 1px solid #161b22; color: #c9d1d9; }
-  tr:hover td { background: #21262d; }
-  .badge { display: inline-block; padding: 1px 6px; border-radius: 10px; font-size: 10px; font-weight: 600; }
-  .badge.up { background: #0f3d1f; color: #3fb950; }
-  .badge.idle { background: #1c2128; color: #8b949e; }
-  canvas { max-height: 120px; }
-  #ts { font-size: 11px; color: #8b949e; margin-top: 12px; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #0d1117; color: #e6edf3; font-family: 'Segoe UI', sans-serif; padding: 16px; }
+h1 { font-size: 18px; color: #58a6ff; margin-bottom: 4px; }
+.subtitle { font-size: 12px; color: #8b949e; margin-bottom: 16px; }
+#status { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 12px; background: #238636; color: #fff; margin-left: 8px; }
+#status.offline { background: #da3633; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
+.card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 16px; }
+.card h2 { font-size: 13px; color: #8b949e; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+.gauge-row { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+.gauge-label { width: 70px; font-size: 12px; color: #8b949e; }
+.gauge-bar { flex: 1; height: 8px; background: #21262d; border-radius: 4px; overflow: hidden; }
+.gauge-fill { height: 100%; border-radius: 4px; transition: width 0.5s; }
+.gauge-fill.ok { background: #238636; }
+.gauge-fill.warn { background: #d29922; }
+.gauge-fill.crit { background: #da3633; }
+.gauge-val { width: 45px; font-size: 12px; text-align: right; font-weight: 600; }
+.stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.stat { background: #0d1117; border-radius: 6px; padding: 10px; }
+.stat .val { font-size: 22px; font-weight: 700; color: #58a6ff; }
+.stat .lbl { font-size: 11px; color: #8b949e; margin-top: 2px; }
+table { width: 100%; font-size: 11px; border-collapse: collapse; }
+th { color: #8b949e; font-weight: 500; text-align: left; padding: 4px 6px; border-bottom: 1px solid #21262d; }
+td { padding: 4px 6px; border-bottom: 1px solid #161b22; color: #c9d1d9; }
+tr:hover td { background: #21262d; }
+.badge { display: inline-block; padding: 1px 6px; border-radius: 10px; font-size: 10px; font-weight: 600; }
+.badge.up { background: #0f3d1f; color: #3fb950; }
+.badge.idle { background: #1c2128; color: #8b949e; }
+.badge.running { background: #0c2d6b; color: #58a6ff; animation: pulse 1.5s infinite; }
+.badge.ok-bkp { background: #0f3d1f; color: #3fb950; }
+.badge.err { background: #3d0f0f; color: #f85149; }
+.badge.warn-bkp { background: #3d2f00; color: #d29922; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+canvas { max-height: 120px; }
+#ts { font-size: 11px; color: #8b949e; margin-top: 12px; }
+.btn-kick { background: #3d0f0f; color: #f85149; border: 1px solid #da3633; border-radius: 4px; padding: 2px 8px; font-size: 10px; cursor: pointer; }
+.btn-kick:hover { background: #da3633; color: #fff; }
+.bkp-log { background: #0d1117; border-radius: 6px; padding: 10px; font-family: monospace; font-size: 10px; max-height: 150px; overflow-y: auto; margin-top: 10px; }
+.bkp-log .log-ok { color: #3fb950; }
+.bkp-log .log-err { color: #f85149; }
+.bkp-log .log-info { color: #8b949e; }
+.toast { position: fixed; bottom: 20px; right: 20px; background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 12px 16px; font-size: 12px; z-index: 999; display: none; }
+.toast.show { display: block; }
+.toast.success { border-color: #238636; color: #3fb950; }
+.toast.error { border-color: #da3633; color: #f85149; }
+.counter-badge { background: #21262d; color: #58a6ff; border-radius: 10px; padding: 1px 7px; font-size: 11px; font-weight: 700; }
 </style>
 </head>
 <body>
@@ -64,7 +80,7 @@
 
   <!-- Memória -->
   <div class="card">
-    <h2>Memória & Swap</h2>
+    <h2>Memória &amp; Swap</h2>
     <div class="gauge-row">
       <div class="gauge-label">RAM</div>
       <div class="gauge-bar"><div class="gauge-fill ok" id="mem-bar" style="width:0%"></div></div>
@@ -90,6 +106,37 @@
     <div id="disk-bars"></div>
   </div>
 
+  <!-- Status Backup -->
+  <div class="card">
+    <h2>Backup Online
+      <span id="bkp-badge" class="badge idle">--</span>
+    </h2>
+    <div class="stat-grid">
+      <div class="stat">
+        <div class="val" id="bkp-mount" style="font-size:14px">--</div>
+        <div class="lbl">Compartilhamento</div>
+      </div>
+      <div class="stat">
+        <div class="val" id="bkp-date" style="font-size:14px">--</div>
+        <div class="lbl">Último backup</div>
+      </div>
+      <div class="stat" style="grid-column:span 2">
+        <div class="val" id="bkp-result" style="font-size:13px">--</div>
+        <div class="lbl">Resultado</div>
+      </div>
+    </div>
+    <div class="bkp-log" id="bkp-log"></div>
+  </div>
+
+  <!-- Usuários Logados -->
+  <div class="card" style="grid-column: span 2">
+    <h2>Usuários Conectados <span class="counter-badge" id="user-count">0</span></h2>
+    <table>
+      <tr><th>Usuário</th><th>Tipo</th><th>Workstation</th><th>Hora Login</th><th>Bancos</th><th>Ação</th></tr>
+      <tbody id="user-table"></tbody>
+    </table>
+  </div>
+
   <!-- Bancos Progress -->
   <div class="card" style="grid-column: span 2">
     <h2>Bancos Progress (Conexões TCP Ativas)</h2>
@@ -111,27 +158,24 @@
 </div>
 
 <div id="ts">Última atualização: --</div>
+<div class="toast" id="toast"></div>
 
 <script>
-const API = '/api/metrics';
 const MAX_POINTS = 30;
 
 function mkChart(id, label, color) {
-  const ctx = document.getElementById(id).getContext('2d');
-  return new Chart(ctx, {
+  return new Chart(document.getElementById(id).getContext('2d'), {
     type: 'line',
     data: {
       labels: Array(MAX_POINTS).fill(''),
       datasets: [{ label, data: Array(MAX_POINTS).fill(null), borderColor: color,
-        backgroundColor: color + '22', borderWidth: 1.5, fill: true,
-        tension: 0.3, pointRadius: 0 }]
+        backgroundColor: color+'22', borderWidth: 1.5, fill: true, tension: 0.3, pointRadius: 0 }]
     },
     options: {
       animation: false, responsive: true, maintainAspectRatio: false,
       scales: {
         x: { display: false },
-        y: { min: 0, max: 100, display: true, ticks: { color: '#8b949e', font: { size: 10 } },
-             grid: { color: '#21262d' } }
+        y: { min: 0, max: 100, ticks: { color: '#8b949e', font: { size: 10 } }, grid: { color: '#21262d' } }
       },
       plugins: { legend: { display: false } }
     }
@@ -147,9 +191,7 @@ function push(chart, val) {
   chart.update('none');
 }
 
-function colorClass(pct) {
-  return pct >= 90 ? 'crit' : pct >= 75 ? 'warn' : 'ok';
-}
+function colorClass(pct) { return pct >= 90 ? 'crit' : pct >= 75 ? 'warn' : 'ok'; }
 
 function setGauge(barId, valId, pct, label) {
   const bar = document.getElementById(barId);
@@ -158,72 +200,152 @@ function setGauge(barId, valId, pct, label) {
   document.getElementById(valId).textContent = label || pct + '%';
 }
 
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + type;
+  setTimeout(() => t.className = 'toast', 3500);
+}
+
+async function kickUser(usuario) {
+  if (!confirm(`Derrubar usuário "${usuario}" de TODOS os bancos?`)) return;
+  try {
+    const r = await fetch('/api/kick-user', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({usuario})
+    });
+    const d = await r.json();
+    showToast(d.msg, d.ok ? 'success' : 'error');
+    refreshUsers();
+  } catch(e) {
+    showToast('Erro ao derrubar usuário', 'error');
+  }
+}
+
+async function refreshUsers() {
+  try {
+    const r = await fetch('/api/users');
+    const d = await r.json();
+    const tbody = document.getElementById('user-table');
+    if (d.users.length === 0) {
+      document.getElementById('user-count').textContent = '0';
+      tbody.innerHTML = '<tr><td colspan="6" style="color:#8b949e">Nenhum usuário conectado</td></tr>';
+      return;
+    }
+    // Agrupar por usuario
+    const grouped = {};
+    for (const u of d.users) {
+      const key = u.usuario === '--' ? `__pasoe__${u.pid}` : u.usuario;
+      if (!grouped[key]) {
+        grouped[key] = { usuario: u.usuario, tipo: u.tipo, workstation: u.workstation, hora: u.hora, bancos: [] };
+      }
+      grouped[key].bancos.push(u.db);
+    }
+    const rows = Object.values(grouped).sort((a,b) => {
+      if (a.usuario === '--' && b.usuario !== '--') return 1;
+      if (a.usuario !== '--' && b.usuario === '--') return -1;
+      return a.usuario.localeCompare(b.usuario);
+    });
+    document.getElementById('user-count').textContent = rows.filter(r => r.usuario !== '--').length + ' usuários / ' + d.total + ' sessões';
+    tbody.innerHTML = rows.map(r =>
+      `<tr>
+        <td><b style="color:${r.usuario!='--'?'#58a6ff':'#8b949e'}">${r.usuario === '--' ? 'PASOE/Broker' : r.usuario}</b></td>
+        <td><span style="font-size:10px;color:#8b949e">${r.tipo||'--'}</span></td>
+        <td>${r.workstation}</td>
+        <td style="font-size:10px;color:#8b949e">${r.hora}</td>
+        <td style="font-size:10px">${r.bancos.join(', ')}</td>
+        <td>${r.usuario !== '--' ? `<button class="btn-kick" onclick="kickUser('${r.usuario}')">Derrubar</button>` : ''}</td>
+      </tr>`
+    ).join('');
+  } catch(e) {}
+}
+
+async function refreshBackup() {
+  try {
+    const r = await fetch('/api/backup-status');
+    const d = await r.json();
+    const badge = document.getElementById('bkp-badge');
+    if (d.running) {
+      badge.textContent = 'EM EXECUÇÃO'; badge.className = 'badge running';
+    } else if (d.last_result && d.last_result.startsWith('OK')) {
+      badge.textContent = 'OK'; badge.className = 'badge ok-bkp';
+    } else if (d.last_result && d.last_result.startsWith('ERRO')) {
+      badge.textContent = 'ERRO'; badge.className = 'badge err';
+    } else {
+      badge.textContent = 'IDLE'; badge.className = 'badge idle';
+    }
+    document.getElementById('bkp-mount').textContent = d.mount_ok ? '✓ Montado' : '✗ Offline';
+    document.getElementById('bkp-mount').style.color = d.mount_ok ? '#3fb950' : '#f85149';
+    document.getElementById('bkp-date').textContent = d.last_log_date || '--';
+    document.getElementById('bkp-result').textContent = d.last_result || '--';
+    const logDiv = document.getElementById('bkp-log');
+    if (d.last_log_lines.length) {
+      logDiv.innerHTML = d.last_log_lines.map(l => {
+        let cls = 'log-info';
+        if (l.startsWith('OK:')) cls = 'log-ok';
+        else if (l.includes('ERRO')) cls = 'log-err';
+        else if (l.includes('===')) cls = 'log-ok';
+        return `<div class="${cls}">${l}</div>`;
+      }).join('');
+      logDiv.scrollTop = logDiv.scrollHeight;
+    }
+  } catch(e) {}
+}
+
 async function refresh() {
   try {
-    const r = await fetch(API);
-    if (!r.ok) throw new Error('err');
+    const r = await fetch('/api/metrics');
+    if (!r.ok) throw new Error();
     const d = await r.json();
 
     document.getElementById('status').textContent = 'ONLINE';
     document.getElementById('status').className = '';
 
-    // CPU
-    setGauge('cpu-bar', 'cpu-val', d.cpu.percent, d.cpu.percent + '%');
+    setGauge('cpu-bar','cpu-val', d.cpu.percent, d.cpu.percent+'%');
     push(cpuChart, d.cpu.percent);
     document.getElementById('load1').textContent = d.load_avg[0].toFixed(2);
     document.getElementById('load5').textContent = d.load_avg[1].toFixed(2);
     document.getElementById('load15').textContent = d.load_avg[2].toFixed(2);
     document.getElementById('cpu-cores').textContent = d.cpu.count;
 
-    // Memória
-    setGauge('mem-bar', 'mem-val', d.memory.percent, d.memory.percent + '%');
-    setGauge('swap-bar', 'swap-val', d.swap.percent, d.swap.percent + '%');
+    setGauge('mem-bar','mem-val', d.memory.percent, d.memory.percent+'%');
+    setGauge('swap-bar','swap-val', d.swap.percent, d.swap.percent+'%');
     push(memChart, d.memory.percent);
     document.getElementById('mem-used').textContent = d.memory.used_gb;
     document.getElementById('mem-total').textContent = d.memory.total_gb;
     document.getElementById('swap-used').textContent = d.swap.used_gb;
     document.getElementById('swap-total').textContent = d.swap.total_gb;
 
-    // Disco
     const diskDiv = document.getElementById('disk-bars');
     diskDiv.innerHTML = d.disk.map(dk =>
       `<div class="gauge-row">
-        <div class="gauge-label" title="${dk.mount}">${dk.mount.length > 8 ? dk.mount.slice(-8) : dk.mount}</div>
+        <div class="gauge-label" title="${dk.mount}">${dk.mount.length>8?dk.mount.slice(-8):dk.mount}</div>
         <div class="gauge-bar"><div class="gauge-fill ${colorClass(dk.percent)}" style="width:${dk.percent}%"></div></div>
         <div class="gauge-val" style="color:${dk.percent>=90?'#da3633':dk.percent>=75?'#d29922':'#3fb950'}">${dk.percent}%</div>
       </div>
       <div style="font-size:10px;color:#8b949e;margin-bottom:6px;padding-left:82px">${dk.used_gb}GB / ${dk.total_gb}GB</div>`
     ).join('');
 
-    // Bancos
     const dbTbody = document.getElementById('db-table');
     dbTbody.innerHTML = '';
     for (const [name, conns] of Object.entries(d.db_connections).sort()) {
-      const tr = document.createElement('tr');
-      const port = {'ems2adt':23600,'ems2cad':23601,'ems2mov':23602,'ems2mp':23603,
-                    'ems5cad':23606,'ems5mov':23607,'hcm':23608,'emsfnd':23619,
-                    'eai':23621,'dtviewer':23650,'emsdes':23635,'broker':23009}[name] || '--';
-      tr.innerHTML = `<td><b>${name}</b></td><td>${port}</td><td>${conns}</td>
-        <td><span class="badge ${conns>0?'up':'idle'}">${conns>0?'ATIVO':'IDLE'}</span></td>`;
-      dbTbody.appendChild(tr);
+      const port = {ems2adt:23600,ems2cad:23601,ems2mov:23602,ems2mp:23603,ems5cad:23606,
+                    ems5mov:23607,hcm:23608,emsfnd:23619,eai:23621,dtviewer:23650,emsdes:23635,emsinc:23009}[name]||'--';
+      dbTbody.innerHTML += `<tr><td><b>${name}</b></td><td>${port}</td><td>${conns}</td>
+        <td><span class="badge ${conns>0?'up':'idle'}">${conns>0?'ATIVO':'IDLE'}</span></td></tr>`;
     }
 
-    // Processos
     const procTbody = document.getElementById('proc-table');
-    procTbody.innerHTML = '';
-    if (d.progress_processes.length === 0) {
+    if (!d.progress_processes.length) {
       procTbody.innerHTML = '<tr><td colspan="4" style="color:#8b949e">Nenhum processo proserve encontrado</td></tr>';
     } else {
-      d.progress_processes.forEach(p => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${p.pid}</td><td>${p.cpu}%</td><td>${p.mem}%</td><td style="font-size:10px">${p.cmd}</td>`;
-        procTbody.appendChild(tr);
-      });
+      procTbody.innerHTML = d.progress_processes.map(p =>
+        `<tr><td>${p.pid}</td><td>${p.cpu}%</td><td>${p.mem}%</td><td style="font-size:10px">${p.cmd}</td></tr>`
+      ).join('');
     }
 
-    const now = new Date();
-    document.getElementById('ts').textContent = 'Última atualização: ' + now.toLocaleTimeString('pt-BR');
-
+    document.getElementById('ts').textContent = 'Última atualização: ' + new Date().toLocaleTimeString('pt-BR');
   } catch(e) {
     document.getElementById('status').textContent = 'OFFLINE';
     document.getElementById('status').className = 'offline';
@@ -231,7 +353,11 @@ async function refresh() {
 }
 
 refresh();
+refreshUsers();
+refreshBackup();
 setInterval(refresh, 5000);
+setInterval(refreshUsers, 8000);
+setInterval(refreshBackup, 30000);
 </script>
 </body>
 </html>
