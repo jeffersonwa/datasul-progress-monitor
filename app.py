@@ -72,9 +72,10 @@ def _update_sys_metrics():
             pc = psutil.cpu_percent(interval=2, percpu=True)
             vm = psutil.virtual_memory()
             sw = psutil.swap_memory()
+            mem_used_real = vm.total - vm.available  # inclui cache/buffers do kernel
             with _sys_metrics_lock:
                 _sys_metrics['cpu']      = {'percent': round(sum(pc)/len(pc), 1), 'per_core': pc, 'count': psutil.cpu_count()}
-                _sys_metrics['memory']   = {'total_gb': round(vm.total/1e9,1), 'used_gb': round(vm.used/1e9,1), 'available_gb': round(vm.available/1e9,1), 'percent': vm.percent}
+                _sys_metrics['memory']   = {'total_gb': round(vm.total/1e9,1), 'used_gb': round(mem_used_real/1e9,1), 'available_gb': round(vm.available/1e9,1), 'percent': vm.percent}
                 _sys_metrics['swap']     = {'total_gb': round(sw.total/1e9,1), 'used_gb': round(sw.used/1e9,1), 'percent': sw.percent}
                 _sys_metrics['load_avg'] = list(os.getloadavg())
                 _sys_metrics['disk']     = get_disk_info()
