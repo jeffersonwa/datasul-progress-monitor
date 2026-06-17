@@ -259,7 +259,7 @@ def metrics():
     sw = psutil.swap_memory()
     return jsonify({
         'timestamp': time.time(),
-        'cpu': {'percent': psutil.cpu_percent(interval=0.1), 'per_core': psutil.cpu_percent(interval=1, percpu=True), 'count': psutil.cpu_count()},
+        'cpu': (lambda pc: {'percent': round(sum(pc)/len(pc),1), 'per_core': pc, 'count': psutil.cpu_count()})(psutil.cpu_percent(interval=0.5, percpu=True)),
         'memory': {'total_gb': round(vm.total/1e9,1), 'used_gb': round(vm.used/1e9,1), 'available_gb': round(vm.available/1e9,1), 'percent': vm.percent},
         'swap': {'total_gb': round(sw.total/1e9,1), 'used_gb': round(sw.used/1e9,1), 'percent': sw.percent},
         'disk': get_disk_info(), 'load_avg': list(os.getloadavg()),
