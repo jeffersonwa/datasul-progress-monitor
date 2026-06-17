@@ -103,6 +103,7 @@ canvas { max-height: 120px; }
 
 <div class="tab-bar">
   <button class="tab active" onclick="switchTab('monitor')">Monitor 8380</button>
+  <button class="tab" onclick="switchTab('hml8480')">HML 8480</button>
   <button class="tab" onclick="switchTab('hml8580')">HML 8580</button>
   <button class="tab" id="tab-usuarios" onclick="switchTab('usuarios')" style="display:none">Usuários do Sistema</button>
 </div>
@@ -226,6 +227,119 @@ canvas { max-height: 120px; }
 </div>
 <div id="ts">Última atualização: --</div>
 </div><!-- fim tab-monitor -->
+
+<!-- TAB: HML 8480 -->
+<div class="tab-content" id="tab-hml8480">
+<div class="grid">
+
+  <div class="card">
+    <h2>CPU</h2>
+    <div class="gauge-row">
+      <div class="gauge-label">Total</div>
+      <div class="gauge-bar"><div class="gauge-fill ok" id="cpu-bar-8480" style="width:0%"></div></div>
+      <div class="gauge-val" id="cpu-val-8480">--</div>
+    </div>
+    <div class="stat-grid" style="margin-top:10px">
+      <div class="stat"><div class="val" id="load1-8480">--</div><div class="lbl">Load 1min</div></div>
+      <div class="stat"><div class="val" id="load5-8480">--</div><div class="lbl">Load 5min</div></div>
+      <div class="stat"><div class="val" id="load15-8480">--</div><div class="lbl">Load 15min</div></div>
+      <div class="stat"><div class="val" id="cpu-cores-8480">--</div><div class="lbl">Núcleos</div></div>
+    </div>
+    <canvas id="cpuChart8480" style="margin-top:12px"></canvas>
+  </div>
+
+  <div class="card">
+    <h2>Memória &amp; Swap</h2>
+    <div class="gauge-row">
+      <div class="gauge-label">RAM</div>
+      <div class="gauge-bar"><div class="gauge-fill ok" id="mem-bar-8480" style="width:0%"></div></div>
+      <div class="gauge-val" id="mem-val-8480">--</div>
+    </div>
+    <div class="gauge-row">
+      <div class="gauge-label">Swap</div>
+      <div class="gauge-bar"><div class="gauge-fill ok" id="swap-bar-8480" style="width:0%"></div></div>
+      <div class="gauge-val" id="swap-val-8480">--</div>
+    </div>
+    <div class="stat-grid" style="margin-top:10px">
+      <div class="stat"><div class="val" id="mem-used-8480">--</div><div class="lbl">RAM Usada (GB)</div></div>
+      <div class="stat"><div class="val" id="mem-total-8480">--</div><div class="lbl">RAM Total (GB)</div></div>
+      <div class="stat"><div class="val" id="swap-used-8480">--</div><div class="lbl">Swap Usada (GB)</div></div>
+      <div class="stat"><div class="val" id="swap-total-8480">--</div><div class="lbl">Swap Total (GB)</div></div>
+    </div>
+    <canvas id="memChart8480" style="margin-top:12px"></canvas>
+  </div>
+
+  <div class="card">
+    <h2>Disco</h2>
+    <div id="disk-bars-8480"></div>
+  </div>
+
+  <div class="card">
+    <h2>Backup Online
+      <span id="bkp-badge-8480" class="badge idle">--</span>
+    </h2>
+    <div class="stat-grid">
+      <div class="stat">
+        <div class="val" id="bkp-mount-8480" style="font-size:14px">--</div>
+        <div class="lbl">Compartilhamento</div>
+      </div>
+      <div class="stat">
+        <div class="val" id="bkp-date-8480" style="font-size:14px">--</div>
+        <div class="lbl">Último backup</div>
+      </div>
+      <div class="stat" style="grid-column:span 2">
+        <div class="val" id="bkp-result-8480" style="font-size:13px">--</div>
+        <div class="lbl">Resultado</div>
+      </div>
+    </div>
+    <div class="bkp-log" id="bkp-log-8480"></div>
+  </div>
+
+  <div class="card" style="grid-column: span 2">
+    <h2>Usuários Conectados <span class="counter-badge" id="user-count-8480">0</span></h2>
+    <div style="max-height:260px;overflow-y:auto;border-radius:6px;border:1px solid #21262d;">
+    <table style="margin:0">
+      <thead style="position:sticky;top:0;background:#161b22;z-index:1">
+        <tr><th>Usuário</th><th>Tipo</th><th>Workstation</th><th>Hora Login</th><th>Bancos</th><th>Ação</th></tr>
+      </thead>
+      <tbody id="user-table-8480"></tbody>
+    </table>
+    </div>
+  </div>
+
+  <div class="card" style="grid-column: span 2">
+    <h2>Bancos Progress HML 8480 (Conexões TCP Ativas)</h2>
+    <table>
+      <tr><th>Banco</th><th>Porta</th><th>Conexões</th><th>Status</th></tr>
+      <tbody id="db-table-8480"></tbody>
+    </table>
+  </div>
+
+  <div class="card" style="grid-column: span 2">
+    <h2>Processos Progress HML 8480 (proserve)</h2>
+    <table>
+      <tr><th>PID</th><th>CPU%</th><th>MEM%</th><th>Banco</th><th>Comando</th></tr>
+      <tbody id="proc-table-8480"></tbody>
+    </table>
+  </div>
+
+  <div class="card" style="grid-column: span 2">
+    <h2>Recursos por Banco Progress HML 8480</h2>
+    <table>
+      <tr><th>Banco</th><th>CPU%</th><th>Memória (MB)</th><th>I/O Leitura</th><th>I/O Escrita</th><th>Tamanho .db</th><th>Status</th></tr>
+      <tbody id="dbres-table-8480"><tr><td colspan="7" style="color:#8b949e">Carregando...</td></tr></tbody>
+    </table>
+  </div>
+
+</div>
+<div style="display:flex;gap:8px;margin-top:14px;align-items:center">
+  <button class="btn-action derruba admin-only" onclick="bancoAction('8480','derruba')">⏹ Derruba Base 8480</button>
+  <button class="btn-action inicia admin-only"  onclick="bancoAction('8480','inicia')">▶ Inicia Base 8480</button>
+  <button class="btn-action atualiza admin-only" onclick="bancoAction('8480','atualiza')">&#x1F504; Atualiza Base (prod&#x2192;hml)</button>
+  <span id="action-status-8480" style="font-size:11px;color:#8b949e"></span>
+</div>
+<div id="ts-8480">Última atualização: --</div>
+</div><!-- fim tab-hml8480 -->
 
 <!-- TAB: HML 8580 -->
 <div class="tab-content" id="tab-hml8580">
@@ -646,13 +760,19 @@ async function refreshDbResources() {
 const ACTION_LABELS = {
   '8380_derruba': 'Derrubando Base 8380',
   '8380_inicia':  'Iniciando Base 8380',
+  '8480_derruba': 'Derrubando Base 8480',
+  '8480_inicia':  'Iniciando Base 8480',
+  '8480_atualiza':'Atualizando Base HML 8480 (prod→8480)',
   '8580_derruba': 'Derrubando Base 8580',
   '8580_inicia':  'Iniciando Base 8580',
-  '8580_atualiza':'Atualizando Base HML 8580 (prod→hml)',
+  '8580_atualiza':'Atualizando Base HML 8580 (prod→8580)',
 };
 const ACTION_CONFIRMS = {
   '8380_derruba': 'Confirma DERRUBAR todos os bancos da 8380 (PRODUÇÃO)?',
   '8380_inicia':  'Confirma INICIAR todos os bancos da 8380 (PRODUÇÃO)?',
+  '8480_derruba': 'Confirma DERRUBAR todos os bancos da 8480 (HML)?',
+  '8480_inicia':  'Confirma INICIAR todos os bancos da 8480 (HML)?',
+  '8480_atualiza':'Confirma ATUALIZAR a base HML 8480 com o backup de produção?\n\nOs bancos 8480 serão DERRUBADOS, restaurados e reiniciados.',
   '8580_derruba': 'Confirma DERRUBAR todos os bancos da 8580 (HML)?',
   '8580_inicia':  'Confirma INICIAR todos os bancos da 8580 (HML)?',
   '8580_atualiza':'Confirma ATUALIZAR a base HML 8580 com o backup de produção?\n\nOs bancos 8580 serão DERRUBADOS, restaurados e reiniciados.',
@@ -728,6 +848,151 @@ async function bancoAction(env, action) {
 document.getElementById('job-modal-bg').addEventListener('click', e => {
   if (e.target === document.getElementById('job-modal-bg')) fecharJobModal();
 });
+
+// ── 8480 charts ──────────────────────────────────────────────────────────────
+const cpuChart8480 = mkChart('cpuChart8480', 'CPU %', '#58a6ff');
+const memChart8480 = mkChart('memChart8480', 'RAM %', '#3fb950');
+
+async function kickUser8480(usuario) {
+  if (!confirm(`Derrubar usuário "${usuario}" de TODOS os bancos HML 8480?`)) return;
+  try {
+    const r = await fetch('/api/kick-user-8480', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({usuario})});
+    const d = await r.json();
+    showToast(d.msg, d.ok ? 'success' : 'error');
+    refreshUsers8480();
+  } catch(e) { showToast('Erro ao derrubar usuário','error'); }
+}
+
+async function refreshUsers8480() {
+  try {
+    const r = await fetch('/api/users-8480');
+    const d = await r.json();
+    const tbody = document.getElementById('user-table-8480');
+    if (d.users.length === 0) {
+      document.getElementById('user-count-8480').textContent = '0';
+      tbody.innerHTML = '<tr><td colspan="6" style="color:#8b949e">Nenhum usuário conectado</td></tr>';
+      return;
+    }
+    const grouped = {};
+    for (const u of d.users) {
+      const key = u.usuario === '--' ? `__pasoe__${u.pid}` : u.usuario;
+      if (!grouped[key]) grouped[key] = {usuario:u.usuario,tipo:u.tipo,workstation:u.workstation,hora:u.hora,bancos:[]};
+      grouped[key].bancos.push(u.db);
+    }
+    const rows = Object.values(grouped).sort((a,b)=>{
+      if(a.usuario==='--'&&b.usuario!=='--') return 1;
+      if(a.usuario!=='--'&&b.usuario==='--') return -1;
+      return a.usuario.localeCompare(b.usuario);
+    });
+    document.getElementById('user-count-8480').textContent = rows.filter(r=>r.usuario!=='--').length+' usuários / '+d.total+' sessões';
+    tbody.innerHTML = rows.map(r=>`<tr>
+      <td><b style="color:${r.usuario!='--'?'#58a6ff':'#8b949e'}">${r.usuario==='--'?'PASOE/Broker':r.usuario}</b></td>
+      <td><span style="font-size:10px;color:#8b949e">${r.tipo||'--'}</span></td>
+      <td>${r.workstation}</td>
+      <td style="font-size:10px;color:#8b949e">${r.hora}</td>
+      <td style="font-size:10px">${r.bancos.join(', ')}</td>
+      <td>${r.usuario!=='--'?`<button class="btn-kick" onclick="kickUser8480('${r.usuario}')">Derrubar</button>`:''}</td>
+    </tr>`).join('');
+  } catch(e) {}
+}
+
+async function refreshBackup8480() {
+  try {
+    const r = await fetch('/api/backup-status-8480');
+    const d = await r.json();
+    const badge = document.getElementById('bkp-badge-8480');
+    if (d.running) { badge.textContent='EM EXECUÇÃO'; badge.className='badge running'; }
+    else if (d.last_result&&d.last_result.startsWith('OK')) { badge.textContent='OK'; badge.className='badge ok-bkp'; }
+    else if (d.last_result&&d.last_result.startsWith('ERRO')) { badge.textContent='ERRO'; badge.className='badge err'; }
+    else { badge.textContent='IDLE'; badge.className='badge idle'; }
+    document.getElementById('bkp-mount-8480').textContent = d.mount_ok ? '✓ Montado' : '✗ Offline';
+    document.getElementById('bkp-mount-8480').style.color = d.mount_ok ? '#3fb950' : '#f85149';
+    document.getElementById('bkp-date-8480').textContent = d.last_log_date||'--';
+    document.getElementById('bkp-result-8480').textContent = d.last_result||'--';
+    const logDiv = document.getElementById('bkp-log-8480');
+    if (d.last_log_lines.length) {
+      logDiv.innerHTML = d.last_log_lines.map(l=>{
+        let cls='log-info';
+        if(l.startsWith('OK:')) cls='log-ok';
+        else if(l.includes('ERRO')) cls='log-err';
+        else if(l.includes('===')) cls='log-ok';
+        return `<div class="${cls}">${l}</div>`;
+      }).join('');
+      logDiv.scrollTop = logDiv.scrollHeight;
+    }
+  } catch(e) {}
+}
+
+async function refresh8480() {
+  try {
+    const r = await fetch('/api/metrics-8480');
+    if (!r.ok) throw new Error();
+    const d = await r.json();
+    setGauge('cpu-bar-8480','cpu-val-8480',d.cpu.percent,d.cpu.percent+'%');
+    push(cpuChart8480,d.cpu.percent);
+    document.getElementById('load1-8480').textContent = d.load_avg[0].toFixed(2);
+    document.getElementById('load5-8480').textContent = d.load_avg[1].toFixed(2);
+    document.getElementById('load15-8480').textContent = d.load_avg[2].toFixed(2);
+    document.getElementById('cpu-cores-8480').textContent = d.cpu.count;
+    setGauge('mem-bar-8480','mem-val-8480',d.memory.percent,d.memory.percent+'%');
+    setGauge('swap-bar-8480','swap-val-8480',d.swap.percent,d.swap.percent+'%');
+    push(memChart8480,d.memory.percent);
+    document.getElementById('mem-used-8480').textContent = d.memory.used_gb;
+    document.getElementById('mem-total-8480').textContent = d.memory.total_gb;
+    document.getElementById('swap-used-8480').textContent = d.swap.used_gb;
+    document.getElementById('swap-total-8480').textContent = d.swap.total_gb;
+    document.getElementById('disk-bars-8480').innerHTML = d.disk.map(dk=>
+      `<div class="gauge-row">
+        <div class="gauge-label" title="${dk.mount}">${dk.mount.length>8?dk.mount.slice(-8):dk.mount}</div>
+        <div class="gauge-bar"><div class="gauge-fill ${colorClass(dk.percent)}" style="width:${dk.percent}%"></div></div>
+        <div class="gauge-val" style="color:${dk.percent>=90?'#da3633':dk.percent>=75?'#d29922':'#3fb950'}">${dk.percent}%</div>
+      </div>
+      <div style="font-size:10px;color:#8b949e;margin-bottom:6px;padding-left:82px">${dk.used_gb}GB / ${dk.total_gb}GB</div>`
+    ).join('');
+    const dbTbody = document.getElementById('db-table-8480');
+    dbTbody.innerHTML = '';
+    for (const [name,conns] of Object.entries(d.db_connections).sort()) {
+      const port={ems2adt:24600,ems2cad:24601,ems2mov:24602,ems2mp:24603,ems5cad:24606,
+                  ems5mov:24607,hcm:24608,emsfnd:24619,eai:24621,dtviewer:24650,emsdes:24635,emsinc:24009}[name]||'--';
+      dbTbody.innerHTML += `<tr><td><b>${name}</b></td><td>${port}</td><td>${conns}</td>
+        <td><span class="badge ${conns>0?'up':'idle'}">${conns>0?'ATIVO':'IDLE'}</span></td></tr>`;
+    }
+    const procTbody = document.getElementById('proc-table-8480');
+    if (!d.progress_processes.length) {
+      procTbody.innerHTML = '<tr><td colspan="4" style="color:#8b949e">Nenhum processo proserve encontrado</td></tr>';
+    } else {
+      const byBanco={};
+      for (const p of d.progress_processes) {
+        const b=p.banco||'(broker)';
+        if(!byBanco[b]) byBanco[b]=[];
+        byBanco[b].push(p);
+      }
+      procTbody.innerHTML = Object.entries(byBanco).sort().map(([banco,procs])=>{
+        const cpuTotal=procs.reduce((s,p)=>s+parseFloat(p.cpu||0),0).toFixed(1);
+        const memTotal=procs.reduce((s,p)=>s+parseFloat(p.mem||0),0).toFixed(1);
+        return `<tr><td>${procs.map(p=>p.pid).join(', ')}</td><td>${cpuTotal}%</td><td>${memTotal}%</td><td><b>${banco}</b></td><td style="font-size:10px;color:#8b949e">${procs.length} processo(s)</td></tr>`;
+      }).join('');
+    }
+    document.getElementById('ts-8480').textContent = 'Última atualização: '+new Date().toLocaleTimeString('pt-BR');
+  } catch(e) {}
+}
+
+async function refreshDbResources8480() {
+  try {
+    const r = await fetch('/api/db-resources-8480',{credentials:'include'});
+    const d = await r.json();
+    const tbody = document.getElementById('dbres-table-8480');
+    tbody.innerHTML = Object.entries(d).sort().map(([banco,v])=>{
+      const cpuBar=v.cpu>0?`<span style="color:#58a6ff">${v.cpu}%</span>`:`<span style="color:#8b949e">0%</span>`;
+      const memColor=v.mem_mb>500?'#f85149':v.mem_mb>200?'#e3b341':'#3fb950';
+      const sizeGB=v.size_mb>=1024?(v.size_mb/1024).toFixed(1)+'GB':v.size_mb.toFixed(0)+'MB';
+      const ioR=v.io_read_mb>=1024?(v.io_read_mb/1024).toFixed(1)+'GB':v.io_read_mb.toFixed(0)+'MB';
+      const ioW=v.io_write_mb>=1024?(v.io_write_mb/1024).toFixed(1)+'GB':v.io_write_mb.toFixed(0)+'MB';
+      const status=v.pids.length>0?'<span class="badge up">UP</span>':'<span class="badge idle">PARADO</span>';
+      return `<tr><td><b>${banco}</b></td><td>${cpuBar}</td><td style="color:${memColor}">${v.mem_mb.toFixed(0)} MB</td><td style="color:#8b949e">${ioR}</td><td style="color:#8b949e">${ioW}</td><td>${sizeGB}</td><td>${status}</td></tr>`;
+    }).join('');
+  } catch(e) {}
+}
 
 // ── 8580 charts ──────────────────────────────────────────────────────────────
 const cpuChart8580 = mkChart('cpuChart8580', 'CPU %', '#58a6ff');
@@ -931,6 +1196,10 @@ async function initAuth() {
   refreshUsers();
   refreshBackup();
   refreshDbResources();
+  refresh8480();
+  refreshUsers8480();
+  refreshBackup8480();
+  refreshDbResources8480();
   refresh8580();
   refreshUsers8580();
   refreshBackup8580();
@@ -939,6 +1208,10 @@ async function initAuth() {
   setInterval(refreshUsers, 8000);
   setInterval(refreshDbResources, 15000);
   setInterval(refreshBackup, 30000);
+  setInterval(refresh8480, 5000);
+  setInterval(refreshUsers8480, 8000);
+  setInterval(refreshDbResources8480, 15000);
+  setInterval(refreshBackup8480, 30000);
   setInterval(refresh8580, 5000);
   setInterval(refreshUsers8580, 8000);
   setInterval(refreshDbResources8580, 15000);
@@ -957,8 +1230,11 @@ function switchTab(tab) {
   if (tab === 'monitor') {
     document.querySelectorAll('.tab')[0].classList.add('active');
     document.getElementById('tab-monitor').classList.add('active');
-  } else if (tab === 'hml8580') {
+  } else if (tab === 'hml8480') {
     document.querySelectorAll('.tab')[1].classList.add('active');
+    document.getElementById('tab-hml8480').classList.add('active');
+  } else if (tab === 'hml8580') {
+    document.querySelectorAll('.tab')[2].classList.add('active');
     document.getElementById('tab-hml8580').classList.add('active');
   } else {
     document.getElementById('tab-usuarios').classList.add('active');
