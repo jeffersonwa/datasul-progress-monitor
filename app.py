@@ -280,6 +280,67 @@ def get_progress_processes():
         pass
     return procs
 
+DB_DIR = '/bancos/DATABASE-JA-8380'
+
+def get_db_resources():
+    banks = list(PROGRESS_PORTS.keys())
+    resources = {}
+
+    # tamanho dos arquivos de banco no disco
+    for banco in banks:
+        size_mb = 0
+        try:
+            for ext in ['.db', '.bi', '.ai', '.lg']:
+                f = os.path.join(DB_DIR, banco + ext)
+                if os.path.exists(f):
+                    size_mb += os.path.getsize(f) / (1024 * 1024)
+        except:
+            pass
+        resources[banco] = {'cpu': 0.0, 'mem_mb': 0.0, 'io_read_mb': 0.0, 'io_write_mb': 0.0,
+                            'size_mb': round(size_mb, 1), 'pids': []}
+
+    # CPU, memória e I/O por processo
+    for proc in psutil.process_iter(['pid', 'name', 'cmdline', 'cpu_percent',
+                                     'memory_info', 'io_counters']):
+        try:
+            name = proc.info['name'] or ''
+            if '_mprosrv' not in name and 'proserve' not in name:
+                continue
+            cmd = ' '.join(proc.info['cmdline'] or [])
+            db_match = re.search(r'/bancos/DATABASE-JA-8380/(\w+)', cmd)
+            if not db_match:
+                continue
+            banco = db_match.group(1)
+            if banco not in resources:
+                continue
+            resources[banco]['cpu']    += proc.info['cpu_percent'] or 0
+            resources[banco]['mem_mb'] += (proc.info['memory_info'].rss / (1024*1024)) if proc.info['memory_info'] else 0
+            pass  # IO lido via db_io.sh abaixo
+            resources[banco]['pids'].append(proc.info['pid'])
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            pass
+
+    # I/O via script com sudo (lê /proc/<pid>/io como root)
+    try:
+        io_out = subprocess.check_output(['sudo', '/opt/dashboard/db_io.sh'],
+                                         text=True, stderr=subprocess.DEVNULL, timeout=10)
+        for line in io_out.splitlines():
+            parts = line.strip().split('|')
+            if len(parts) == 3 and parts[0] in resources:
+                resources[parts[0]]['io_read_mb']  += int(parts[1]) / (1024*1024)
+                resources[parts[0]]['io_write_mb'] += int(parts[2]) / (1024*1024)
+    except Exception:
+        pass
+
+    # arredondar
+    for v in resources.values():
+        v['cpu']          = round(v['cpu'], 1)
+        v['mem_mb']       = round(v['mem_mb'], 1)
+        v['io_read_mb']   = round(v['io_read_mb'], 1)
+        v['io_write_mb']  = round(v['io_write_mb'], 1)
+
+    return resources
+
 # ── api protegida ─────────────────────────────────────────────────────────────
 @app.route('/api/metrics')
 @login_required
@@ -305,6 +366,11 @@ def users():
 @login_required
 def backup_status():
     return jsonify(get_backup_status())
+
+@app.route('/api/db-resources')
+@login_required
+def db_resources():
+    return jsonify(get_db_resources())
 
 @app.route('/api/kick-user', methods=['POST'])
 @login_required

@@ -191,6 +191,15 @@ canvas { max-height: 120px; }
     </table>
   </div>
 
+  <!-- Recursos por Banco -->
+  <div class="card" style="grid-column: span 2">
+    <h2>Recursos por Banco Progress</h2>
+    <table>
+      <tr><th>Banco</th><th>CPU%</th><th>Memória (MB)</th><th>I/O Leitura</th><th>I/O Escrita</th><th>Tamanho .db</th><th>Status</th></tr>
+      <tbody id="dbres-table"><tr><td colspan="7" style="color:#8b949e">Carregando...</td></tr></tbody>
+    </table>
+  </div>
+
 </div>
 <div id="ts">Última atualização: --</div>
 </div><!-- fim tab-monitor -->
@@ -446,6 +455,34 @@ async function refresh() {
   }
 }
 
+async function refreshDbResources() {
+  try {
+    const r = await fetch('/api/db-resources', {credentials:'include'});
+    const d = await r.json();
+    const tbody = document.getElementById('dbres-table');
+    const rows = Object.entries(d).sort().map(([banco, v]) => {
+      const cpuBar  = v.cpu  > 0 ? `<span style="color:#58a6ff">${v.cpu}%</span>` : `<span style="color:#8b949e">0%</span>`;
+      const memColor = v.mem_mb > 500 ? '#f85149' : v.mem_mb > 200 ? '#e3b341' : '#3fb950';
+      const sizeGB  = v.size_mb >= 1024 ? (v.size_mb/1024).toFixed(1)+'GB' : v.size_mb.toFixed(0)+'MB';
+      const ioR     = v.io_read_mb  >= 1024 ? (v.io_read_mb/1024).toFixed(1)+'GB'  : v.io_read_mb.toFixed(0)+'MB';
+      const ioW     = v.io_write_mb >= 1024 ? (v.io_write_mb/1024).toFixed(1)+'GB' : v.io_write_mb.toFixed(0)+'MB';
+      const status  = v.pids.length > 0
+        ? '<span class="badge up">UP</span>'
+        : '<span class="badge idle">PARADO</span>';
+      return `<tr>
+        <td><b>${banco}</b></td>
+        <td>${cpuBar}</td>
+        <td style="color:${memColor}">${v.mem_mb.toFixed(0)} MB</td>
+        <td style="color:#8b949e">${ioR}</td>
+        <td style="color:#8b949e">${ioW}</td>
+        <td>${sizeGB}</td>
+        <td>${status}</td>
+      </tr>`;
+    });
+    tbody.innerHTML = rows.join('');
+  } catch(e) {}
+}
+
 // ── auth ─────────────────────────────────────────────────────────────────────
 let perfilAtual = 'viewer';
 
@@ -462,8 +499,10 @@ async function initAuth() {
   refresh();
   refreshUsers();
   refreshBackup();
+  refreshDbResources();
   setInterval(refresh, 5000);
   setInterval(refreshUsers, 8000);
+  setInterval(refreshDbResources, 15000);
   setInterval(refreshBackup, 30000);
 }
 
