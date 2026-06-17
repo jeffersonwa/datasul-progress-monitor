@@ -768,6 +768,7 @@ BANCO_SCRIPTS = {
     '8380': {
         'derruba': '/opt/dashboard/derruba_8380.sh',
         'inicia':  '/opt/dashboard/carga_8380.sh',
+        'bkp':     '/opt/dashboard/executa_bkp.sh',
     },
     '8580': {
         'derruba':  '/opt/dashboard/derruba_8580.sh',

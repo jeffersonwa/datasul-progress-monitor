@@ -82,6 +82,8 @@ canvas { max-height: 120px; }
 .btn-action.inicia:hover   { background: #238636; color: #fff; }
 .btn-action.atualiza { background: #0c2d6b; color: #58a6ff; border: 1px solid #1f6feb; }
 .btn-action.atualiza:hover { background: #1f6feb; color: #fff; }
+.btn-action.bkp      { background: #2d1f00; color: #e3a14f; border: 1px solid #a36a00; }
+.btn-action.bkp:hover      { background: #a36a00; color: #fff; }
 .btn-action:disabled { opacity: 0.4; cursor: not-allowed; }
 .admin-only { display: none; }
 .job-log { background: #0d1117; border-radius: 6px; padding: 10px; font-family: monospace; font-size: 10px; max-height: 320px; overflow-y: auto; margin-top: 10px; white-space: pre-wrap; }
@@ -221,6 +223,7 @@ canvas { max-height: 120px; }
 
 </div>
 <div style="display:flex;gap:8px;margin-top:14px;align-items:center" id="actions-8380">
+  <button class="btn-action bkp admin-only"    onclick="bancoAction('8380','bkp')">&#x1F4BE; Executa BKP Online</button>
   <button class="btn-action derruba admin-only" onclick="bancoAction('8380','derruba')">⏹ Derruba Base 8380</button>
   <button class="btn-action inicia admin-only"  onclick="bancoAction('8380','inicia')">▶ Inicia Base 8380</button>
   <span id="action-status-8380" style="font-size:11px;color:#8b949e"></span>
@@ -758,6 +761,7 @@ async function refreshDbResources() {
 
 // ── ações banco ──────────────────────────────────────────────────────────────
 const ACTION_LABELS = {
+  '8380_bkp':     'Backup Online 8380 em execução...',
   '8380_derruba': 'Derrubando Base 8380',
   '8380_inicia':  'Iniciando Base 8380',
   '8480_derruba': 'Derrubando Base 8480',
@@ -768,6 +772,7 @@ const ACTION_LABELS = {
   '8580_atualiza':'Atualizando Base HML 8580 (prod→8580)',
 };
 const ACTION_CONFIRMS = {
+  '8380_bkp':     'Confirma executar BACKUP ONLINE da 8380 agora?\n\nOs bancos continuam ativos durante o backup.',
   '8380_derruba': 'Confirma DERRUBAR todos os bancos da 8380 (PRODUÇÃO)?',
   '8380_inicia':  'Confirma INICIAR todos os bancos da 8380 (PRODUÇÃO)?',
   '8480_derruba': 'Confirma DERRUBAR todos os bancos da 8480 (HML)?',
