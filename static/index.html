@@ -8,8 +8,31 @@
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { background: #0d1117; color: #e6edf3; font-family: 'Segoe UI', sans-serif; padding: 16px; }
-h1 { font-size: 18px; color: #58a6ff; margin-bottom: 4px; }
+.topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+h1 { font-size: 18px; color: #58a6ff; }
 .subtitle { font-size: 12px; color: #8b949e; margin-bottom: 16px; }
+.user-info { font-size: 12px; color: #8b949e; display: flex; align-items: center; gap: 10px; }
+.btn-logout { background: #21262d; border: 1px solid #30363d; color: #e6edf3; border-radius: 6px; padding: 4px 12px; font-size: 11px; cursor: pointer; }
+.btn-logout:hover { background: #da3633; border-color: #da3633; }
+.tab-bar { display: flex; gap: 4px; margin-bottom: 16px; }
+.tab { background: #21262d; border: 1px solid #30363d; color: #8b949e; border-radius: 6px; padding: 6px 16px; font-size: 12px; cursor: pointer; }
+.tab.active { background: #1f6feb; border-color: #1f6feb; color: #fff; }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+.modal-bg { display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:100; align-items:center; justify-content:center; }
+.modal-bg.open { display:flex; }
+.modal { background:#161b22; border:1px solid #30363d; border-radius:10px; padding:28px; width:100%; max-width:400px; }
+.modal h3 { font-size:15px; margin-bottom:18px; color:#58a6ff; }
+.modal label { display:block; font-size:11px; color:#8b949e; margin-bottom:4px; margin-top:12px; }
+.modal input, .modal select { width:100%; background:#0d1117; border:1px solid #30363d; border-radius:6px; color:#e6edf3; padding:8px 10px; font-size:13px; }
+.modal-btns { display:flex; gap:8px; margin-top:20px; justify-content:flex-end; }
+.btn-primary { background:#238636; color:#fff; border:none; border-radius:6px; padding:8px 18px; font-size:12px; cursor:pointer; }
+.btn-cancel  { background:#21262d; color:#e6edf3; border:1px solid #30363d; border-radius:6px; padding:8px 18px; font-size:12px; cursor:pointer; }
+.btn-sm { padding:2px 10px; border-radius:4px; font-size:10px; cursor:pointer; border:none; }
+.btn-edit { background:#1f6feb22; color:#58a6ff; border:1px solid #1f6feb44; }
+.btn-del  { background:#da363322; color:#f85149; border:1px solid #da363344; }
+.badge-admin  { background:#0c2d6b; color:#58a6ff; padding:1px 7px; border-radius:10px; font-size:10px; font-weight:600; }
+.badge-viewer { background:#1c2128; color:#8b949e; padding:1px 7px; border-radius:10px; font-size:10px; }
 #status { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 12px; background: #238636; color: #fff; margin-left: 8px; }
 #status.offline { background: #da3633; }
 .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
@@ -56,9 +79,22 @@ canvas { max-height: 120px; }
 </head>
 <body>
 
-<h1>Monitor Datasul/Progress <span id="status">ONLINE</span></h1>
+<div class="topbar">
+  <h1>Monitor Datasul/Progress <span id="status">ONLINE</span></h1>
+  <div class="user-info">
+    <span id="user-label"></span>
+    <button class="btn-logout" onclick="logout()">Sair</button>
+  </div>
+</div>
 <div class="subtitle">db-progress001 (192.168.7.9) &mdash; Atualiza a cada 5 segundos</div>
 
+<div class="tab-bar">
+  <button class="tab active" onclick="switchTab('monitor')">Monitor</button>
+  <button class="tab" id="tab-usuarios" onclick="switchTab('usuarios')" style="display:none">Usuários do Sistema</button>
+</div>
+
+<!-- TAB: MONITOR -->
+<div class="tab-content active" id="tab-monitor">
 <div class="grid">
 
   <!-- CPU -->
@@ -156,8 +192,51 @@ canvas { max-height: 120px; }
   </div>
 
 </div>
-
 <div id="ts">Última atualização: --</div>
+</div><!-- fim tab-monitor -->
+
+<!-- TAB: USUARIOS DO SISTEMA -->
+<div class="tab-content" id="tab-usuarios-content">
+  <div class="card" style="max-width:860px">
+    <h2 style="justify-content:space-between">
+      Usuários do Sistema
+      <button class="btn-primary btn-sm" style="padding:4px 14px;font-size:11px" onclick="abrirModal()">+ Novo Usuário</button>
+    </h2>
+    <table id="tbl-usuarios">
+      <tr><th>Login</th><th>Nome</th><th>Perfil</th><th>Status</th><th>Criado em</th><th>Ações</th></tr>
+      <tbody id="tbody-usuarios"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- MODAL CADASTRO/EDIÇÃO -->
+<div class="modal-bg" id="modal-bg">
+  <div class="modal">
+    <h3 id="modal-titulo">Novo Usuário</h3>
+    <input type="hidden" id="modal-id">
+    <label>Login</label>
+    <input id="modal-login" type="text" placeholder="ex: joao.silva">
+    <label>Nome completo</label>
+    <input id="modal-nome" type="text" placeholder="ex: João Silva">
+    <label>Senha <span id="senha-hint" style="color:#8b949e;font-size:10px">(deixe em branco para não alterar)</span></label>
+    <input id="modal-senha" type="password" placeholder="••••••••">
+    <label>Perfil</label>
+    <select id="modal-perfil">
+      <option value="viewer">Viewer — somente visualização</option>
+      <option value="admin">Admin — acesso total</option>
+    </select>
+    <label>Status</label>
+    <select id="modal-ativo">
+      <option value="1">Ativo</option>
+      <option value="0">Inativo</option>
+    </select>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="fecharModal()">Cancelar</button>
+      <button class="btn-primary" onclick="salvarUsuario()">Salvar</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -352,12 +431,115 @@ async function refresh() {
   }
 }
 
-refresh();
-refreshUsers();
-refreshBackup();
-setInterval(refresh, 5000);
-setInterval(refreshUsers, 8000);
-setInterval(refreshBackup, 30000);
+// ── auth ─────────────────────────────────────────────────────────────────────
+let perfilAtual = 'viewer';
+
+async function initAuth() {
+  const r = await fetch('/api/me', {credentials:'include'});
+  if (!r.ok || r.status === 401) { window.location.href = '/login'; return; }
+  const d = await r.json();
+  if (!d.ok) { window.location.href = '/login'; return; }
+  perfilAtual = d.perfil;
+  document.getElementById('user-label').textContent = `${d.nome} (${d.perfil})`;
+  if (d.perfil === 'admin') {
+    document.getElementById('tab-usuarios').style.display = '';
+  }
+  refresh();
+  refreshUsers();
+  refreshBackup();
+  setInterval(refresh, 5000);
+  setInterval(refreshUsers, 8000);
+  setInterval(refreshBackup, 30000);
+}
+
+async function logout() {
+  await fetch('/api/logout', {method:'POST', credentials:'include'});
+  window.location.href = '/login';
+}
+
+// ── tabs ──────────────────────────────────────────────────────────────────────
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  if (tab === 'monitor') {
+    document.querySelectorAll('.tab')[0].classList.add('active');
+    document.getElementById('tab-monitor').classList.add('active');
+  } else {
+    document.getElementById('tab-usuarios').classList.add('active');
+    document.getElementById('tab-usuarios-content').classList.add('active');
+    carregarUsuarios();
+  }
+}
+
+// ── crud usuarios ─────────────────────────────────────────────────────────────
+async function carregarUsuarios() {
+  const r = await fetch('/api/usuarios', {credentials:'include'});
+  const lista = await r.json();
+  const tbody = document.getElementById('tbody-usuarios');
+  tbody.innerHTML = lista.map(u => `
+    <tr>
+      <td><b>${u.login}</b></td>
+      <td>${u.nome}</td>
+      <td><span class="badge-${u.perfil}">${u.perfil}</span></td>
+      <td><span class="badge ${u.ativo ? 'up' : 'idle'}">${u.ativo ? 'Ativo' : 'Inativo'}</span></td>
+      <td style="font-size:10px;color:#8b949e">${u.criado_em}</td>
+      <td style="display:flex;gap:6px">
+        <button class="btn-sm btn-edit" onclick='editarUsuario(${JSON.stringify(u)})'>Editar</button>
+        <button class="btn-sm btn-del"  onclick="excluirUsuario(${u.id},'${u.login}')">Excluir</button>
+      </td>
+    </tr>`).join('');
+}
+
+function abrirModal(u) {
+  document.getElementById('modal-id').value    = u ? u.id : '';
+  document.getElementById('modal-login').value = u ? u.login : '';
+  document.getElementById('modal-nome').value  = u ? u.nome : '';
+  document.getElementById('modal-senha').value = '';
+  document.getElementById('modal-perfil').value = u ? u.perfil : 'viewer';
+  document.getElementById('modal-ativo').value  = u ? (u.ativo ? '1' : '0') : '1';
+  document.getElementById('modal-login').disabled = !!u;
+  document.getElementById('modal-titulo').textContent = u ? 'Editar Usuário' : 'Novo Usuário';
+  document.getElementById('senha-hint').style.display = u ? '' : 'none';
+  document.getElementById('modal-bg').classList.add('open');
+}
+function editarUsuario(u) { abrirModal(u); }
+function fecharModal() { document.getElementById('modal-bg').classList.remove('open'); }
+
+async function salvarUsuario() {
+  const id     = document.getElementById('modal-id').value;
+  const login  = document.getElementById('modal-login').value.trim();
+  const nome   = document.getElementById('modal-nome').value.trim();
+  const senha  = document.getElementById('modal-senha').value;
+  const perfil = document.getElementById('modal-perfil').value;
+  const ativo  = document.getElementById('modal-ativo').value === '1';
+  let r;
+  if (id) {
+    r = await fetch(`/api/usuarios/${id}`, {method:'PUT', credentials:'include',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({nome, perfil, ativo, ...(senha ? {senha} : {})})});
+  } else {
+    r = await fetch('/api/usuarios', {method:'POST', credentials:'include',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({login, nome, senha, perfil})});
+  }
+  const d = await r.json();
+  showToast(d.msg, d.ok ? 'success' : 'error');
+  if (d.ok) { fecharModal(); carregarUsuarios(); }
+}
+
+async function excluirUsuario(id, login) {
+  if (!confirm(`Excluir usuário "${login}"?`)) return;
+  const r = await fetch(`/api/usuarios/${id}`, {method:'DELETE', credentials:'include'});
+  const d = await r.json();
+  showToast(d.msg, d.ok ? 'success' : 'error');
+  if (d.ok) carregarUsuarios();
+}
+
+document.getElementById('modal-bg').addEventListener('click', e => {
+  if (e.target === document.getElementById('modal-bg')) fecharModal();
+});
+
+initAuth();
 </script>
 </body>
 </html>

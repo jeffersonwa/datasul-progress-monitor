@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login — Monitor Datasul</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #0d1117; color: #e6edf3; font-family: 'Segoe UI', sans-serif;
+       display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+.card { background: #161b22; border: 1px solid #30363d; border-radius: 12px;
+        padding: 40px 36px; width: 100%; max-width: 360px; }
+.logo { text-align: center; margin-bottom: 28px; }
+.logo h1 { font-size: 20px; color: #58a6ff; }
+.logo p  { font-size: 12px; color: #8b949e; margin-top: 4px; }
+label { display: block; font-size: 12px; color: #8b949e; margin-bottom: 6px; margin-top: 16px; }
+input { width: 100%; background: #0d1117; border: 1px solid #30363d; border-radius: 6px;
+        color: #e6edf3; padding: 10px 12px; font-size: 14px; outline: none; }
+input:focus { border-color: #58a6ff; }
+button { width: 100%; margin-top: 24px; background: #238636; color: #fff;
+         border: none; border-radius: 6px; padding: 12px; font-size: 14px;
+         font-weight: 600; cursor: pointer; }
+button:hover { background: #2ea043; }
+.erro { margin-top: 14px; color: #f85149; font-size: 12px; text-align: center; display: none; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">
+    <h1>Monitor Datasul</h1>
+    <p>db-progress001 · JA 8380</p>
+  </div>
+  <form id="form">
+    <label>Login</label>
+    <input id="login" type="text" autocomplete="username" placeholder="seu login" required>
+    <label>Senha</label>
+    <input id="senha" type="password" autocomplete="current-password" placeholder="••••••••" required>
+    <button type="submit">Entrar</button>
+    <div class="erro" id="erro"></div>
+  </form>
+</div>
+<script>
+document.getElementById('form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const erro = document.getElementById('erro');
+  erro.style.display = 'none';
+  const r = await fetch('/api/login', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    credentials: 'include',
+    body: JSON.stringify({ login: document.getElementById('login').value, senha: document.getElementById('senha').value })
+  });
+  const d = await r.json();
+  if (d.ok) { window.location.href = '/'; }
+  else { erro.textContent = d.msg; erro.style.display = 'block'; }
+});
+</script>
+</body>
+</html>
