@@ -42,6 +42,17 @@ def init_db():
 
 init_db()
 
+# primer inicial do cpu_percent por processo (primeiro call retorna 0)
+def _prime_cpu():
+    try:
+        for p in psutil.process_iter(['name', 'cpu_percent']):
+            pass
+    except Exception:
+        pass
+
+import threading
+threading.Thread(target=_prime_cpu, daemon=True).start()
+
 # ── auth helpers ──────────────────────────────────────────────────────────────
 def login_required(f):
     @wraps(f)
@@ -248,15 +259,23 @@ def get_db_connections():
 def get_progress_processes():
     procs = []
     try:
-        out = subprocess.check_output(['ps', 'auxww'], text=True)
-        for line in out.splitlines():
-            if 'proserve' in line or '_mprosrv' in line:
-                p = line.split()
-                cmd = ' '.join(p[10:])
-                # banco fica no path: /bancos/DATABASE-JA-8380/<nome>
+        for proc in psutil.process_iter(['pid', 'name', 'cmdline', 'cpu_percent', 'memory_percent']):
+            try:
+                name = proc.info['name'] or ''
+                if '_mprosrv' not in name and 'proserve' not in name:
+                    continue
+                cmd = ' '.join(proc.info['cmdline'] or [])
                 db_match = re.search(r'/bancos/[^/]+/(\w+)', cmd)
                 banco = db_match.group(1) if db_match else ''
-                procs.append({'pid': p[1], 'cpu': p[2], 'mem': p[3], 'banco': banco, 'cmd': cmd[:120]})
+                procs.append({
+                    'pid': str(proc.info['pid']),
+                    'cpu': round(proc.info['cpu_percent'], 1),
+                    'mem': round(proc.info['memory_percent'], 1),
+                    'banco': banco,
+                    'cmd': cmd[:120]
+                })
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                pass
     except:
         pass
     return procs
