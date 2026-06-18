@@ -349,10 +349,55 @@ EOF
 
 ## Ajustes de kernel recomendados (Progress OpenEdge)
 
-Aplique no servidor de bancos antes de subir o dashboard:
+> Estes ajustes foram aplicados e validados no servidor **db-progress001** em 18/06/2026.
+> O servidor passou de carga instável (swap em uso, ulimit crítico) para **CPU 99% idle, swap 0 B, latência de disco ~0,7 ms**.
+
+### Comparativo antes × depois
+
+#### Memória virtual (`vm.*`)
+
+| Parâmetro | ❌ Antes | ✅ Depois | Por que importa |
+|-----------|---------|----------|-----------------|
+| `vm.swappiness` | **60** (padrão) / **10** (sysctl.conf conflitante) | **1** | Kernel praticamente não usa swap — mantém buffers do Progress na RAM |
+| `vm.dirty_ratio` | **20%** | **10%** | Força escrita em disco mais cedo, evita pico de I/O repentino |
+| `vm.dirty_background_ratio` | **10%** | **3%** | pdflush começa a gravar mais cedo, reduz acúmulo de dados sujos |
+| `vm.dirty_expire_centisecs` | **3000** (30 s) | **500** (5 s) | Dados sujos escritos em 5 s em vez de 30 s |
+| `vm.dirty_writeback_centisecs` | **500** (5 s) | **100** (1 s) | Frequência de flush 5× maior — mais consistência transacional |
+| `vm.overcommit_memory` | **0** (heurístico) | **2** (estrito) | Progress aloca memória de forma segura — sem OOM inesperado |
+| `vm.overcommit_ratio` | **50%** (padrão) | **95%** | Permite uso de até 95 % da RAM + swap |
+
+#### Rede (`net.*`)
+
+| Parâmetro | ❌ Antes | ✅ Depois | Por que importa |
+|-----------|---------|----------|-----------------|
+| `net.core.rmem_max` | **~200 KB** (212992) | **16 MB** (16777216) | Buffer de recepção TCP 80× maior — melhora throughput PASOE↔DB |
+| `net.core.wmem_max` | **~200 KB** (212992) | **16 MB** (16777216) | Buffer de envio TCP 80× maior — reduz retransmissões |
+| `net.ipv4.tcp_rmem` | padrão do kernel | **4K / 87K / 16M** | Ajuste dinâmico do buffer de recepção por conexão |
+| `net.ipv4.tcp_wmem` | padrão do kernel | **4K / 64K / 16M** | Ajuste dinâmico do buffer de envio por conexão |
+| `net.ipv4.tcp_fin_timeout` | **60 s** | **15 s** | Conexões encerradas liberadas 4× mais rápido |
+| `net.ipv4.tcp_keepalive_time` | **7200 s** (2 h) | **300 s** (5 min) | Sessões Progress inativas detectadas em 5 min em vez de 2 h |
+| `net.core.somaxconn` | **4096** | **4096** | Sem alteração — já adequado para a carga |
+
+#### Filesystem e I/O
+
+| Parâmetro | ❌ Antes | ✅ Depois | Por que importa |
+|-----------|---------|----------|-----------------|
+| `fs.aio-max-nr` | **65.536** | **1.048.576** | Suporta volume alto de operações async I/O dos bancos Progress |
+| Transparent HugePages | **madvise** | **never** | Elimina latência de fragmentação de memória — recomendado pelo Progress |
+
+#### Limites de processo
+
+| Parâmetro | ❌ Antes | ✅ Depois | Por que importa |
+|-----------|---------|----------|-----------------|
+| `open files` (ulimit -n) | **1024** ⚠️ crítico | **65.536** | 1024 causava erros "too many open files" com 12 bancos × múltiplas conexões |
+
+---
+
+### Aplicar os ajustes
 
 ```bash
 sudo tee /etc/sysctl.d/99-progress-db.conf <<'EOF'
+# Memória virtual
 vm.swappiness                  = 1
 vm.dirty_ratio                 = 10
 vm.dirty_background_ratio      = 3
@@ -360,6 +405,8 @@ vm.dirty_expire_centisecs      = 500
 vm.dirty_writeback_centisecs   = 100
 vm.overcommit_memory           = 2
 vm.overcommit_ratio            = 95
+
+# Rede
 net.core.rmem_max              = 16777216
 net.core.wmem_max              = 16777216
 net.ipv4.tcp_rmem              = 4096 87380 16777216
@@ -367,11 +414,20 @@ net.ipv4.tcp_wmem              = 4096 65536 16777216
 net.ipv4.tcp_fin_timeout       = 15
 net.ipv4.tcp_keepalive_time    = 300
 net.core.somaxconn             = 4096
+
+# I/O assíncrono
 fs.aio-max-nr                  = 1048576
 EOF
 
 sudo sysctl --system
 ```
+
+> **Atenção:** se o `/etc/sysctl.conf` contiver `vm.swappiness` com valor diferente, ele pode sobrescrever o arquivo acima.
+> Verifique e corrija:
+> ```bash
+> grep swappiness /etc/sysctl.conf /etc/sysctl.d/*.conf
+> # Se aparecer valor diferente de 1 em algum arquivo, edite e corrija
+> ```
 
 Limites de processo:
 
@@ -394,6 +450,20 @@ echo never > /sys/kernel/mm/transparent_hugepage/enabled
 echo never > /sys/kernel/mm/transparent_hugepage/defrag
 EOF
 sudo chmod +x /etc/rc.local
+```
+
+### Verificar se os ajustes foram aplicados
+
+```bash
+sysctl vm.swappiness vm.dirty_ratio vm.dirty_background_ratio \
+       vm.overcommit_memory net.core.rmem_max net.ipv4.tcp_keepalive_time \
+       fs.aio-max-nr
+
+cat /proc/sys/kernel/mm/transparent_hugepage/enabled
+# esperado: always madvise [never]
+
+ulimit -n
+# esperado: 65536
 ```
 
 ---
