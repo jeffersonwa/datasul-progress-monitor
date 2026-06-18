@@ -10,29 +10,5 @@ ExecStart=/usr/bin/python3 /opt/dashboard/app.py
 Restart=always
 RestartSec=5
 
-# ── Limites de CPU ────────────────────────────────────────────────────────────
-# Máximo de 20% de um núcleo lógico (ex: 1 de 16 threads = 6,25% do total)
-CPUQuota=20%
-# Peso de escalonamento — menor = menor prioridade vs. proserve (padrão 100)
-CPUWeight=20
-
-# ── Limites de Memória ────────────────────────────────────────────────────────
-# Soft limit: kernel começa a pressionar antes de atingir o hard limit
-MemoryHigh=256M
-# Hard limit: processo é terminado (OOM) se ultrapassar
-MemoryMax=384M
-# Swap permitido para este serviço
-MemorySwapMax=0
-
-# ── Limites de I/O ────────────────────────────────────────────────────────────
-# Peso de I/O — menor = menor prioridade vs. bancos Progress (padrão 100)
-IOWeight=10
-
-# ── Limites de processo ───────────────────────────────────────────────────────
-# Máximo de file descriptors abertos pelo serviço
-LimitNOFILE=1024
-# Máximo de processos/threads filhos
-TasksMax=64
-
 [Install]
 WantedBy=multi-user.target
