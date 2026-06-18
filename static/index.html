@@ -105,6 +105,7 @@ canvas { max-height: 120px; }
 
 <div class="tab-bar">
   <button class="tab active" onclick="switchTab('monitor')">Monitor 8380</button>
+  <button class="tab" onclick="switchTab('backup')">Backup / Bancos 8380</button>
   <button class="tab" onclick="switchTab('hml8480')">HML 8480</button>
   <button class="tab" onclick="switchTab('hml8580')">HML 8580</button>
   <button class="tab" id="tab-usuarios" onclick="switchTab('usuarios')" style="display:none">Usuários do Sistema</button>
@@ -159,6 +160,14 @@ canvas { max-height: 120px; }
     <div id="disk-bars"></div>
   </div>
 
+</div>
+<div id="ts">Última atualização: --</div>
+</div><!-- fim tab-monitor -->
+
+<!-- TAB: BACKUP / BANCOS 8380 -->
+<div class="tab-content" id="tab-backup">
+<div class="grid">
+
   <!-- Status Backup -->
   <div class="card">
     <h2>Backup Online
@@ -181,7 +190,16 @@ canvas { max-height: 120px; }
     <div class="bkp-log" id="bkp-log"></div>
   </div>
 
-  <!-- Usuários Logados -->
+  <!-- Bancos Progress -->
+  <div class="card" style="grid-column: span 2">
+    <h2>Status dos Bancos (Conexões TCP Ativas)</h2>
+    <table>
+      <tr><th>Banco</th><th>Porta</th><th>Conexões</th><th>Status</th></tr>
+      <tbody id="db-table"></tbody>
+    </table>
+  </div>
+
+  <!-- Usuários Conectados -->
   <div class="card" style="grid-column: span 2">
     <h2>Usuários Conectados <span class="counter-badge" id="user-count">0</span></h2>
     <div style="max-height:260px;overflow-y:auto;border-radius:6px;border:1px solid #21262d;">
@@ -192,15 +210,6 @@ canvas { max-height: 120px; }
       <tbody id="user-table"></tbody>
     </table>
     </div>
-  </div>
-
-  <!-- Bancos Progress -->
-  <div class="card" style="grid-column: span 2">
-    <h2>Bancos Progress (Conexões TCP Ativas)</h2>
-    <table>
-      <tr><th>Banco</th><th>Porta</th><th>Conexões</th><th>Status</th></tr>
-      <tbody id="db-table"></tbody>
-    </table>
   </div>
 
   <!-- Processos Progress -->
@@ -228,8 +237,7 @@ canvas { max-height: 120px; }
   <button class="btn-action inicia admin-only"  onclick="bancoAction('8380','inicia')">▶ Inicia Base 8380</button>
   <span id="action-status-8380" style="font-size:11px;color:#8b949e"></span>
 </div>
-<div id="ts">Última atualização: --</div>
-</div><!-- fim tab-monitor -->
+</div><!-- fim tab-backup -->
 
 <!-- TAB: HML 8480 -->
 <div class="tab-content" id="tab-hml8480">
@@ -1235,12 +1243,15 @@ function switchTab(tab) {
   if (tab === 'monitor') {
     document.querySelectorAll('.tab')[0].classList.add('active');
     document.getElementById('tab-monitor').classList.add('active');
-  } else if (tab === 'hml8480') {
+  } else if (tab === 'backup') {
     document.querySelectorAll('.tab')[1].classList.add('active');
+    document.getElementById('tab-backup').classList.add('active');
+  } else if (tab === 'hml8480') {
+    document.querySelectorAll('.tab')[2].classList.add('active');
     document.getElementById('tab-hml8480').classList.add('active');
     cpuChart8480.resize(); memChart8480.resize();
   } else if (tab === 'hml8580') {
-    document.querySelectorAll('.tab')[2].classList.add('active');
+    document.querySelectorAll('.tab')[3].classList.add('active');
     document.getElementById('tab-hml8580').classList.add('active');
     cpuChart8580.resize(); memChart8580.resize();
   } else {

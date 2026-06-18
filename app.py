@@ -635,8 +635,6 @@ def db_resources():
 @app.route('/api/kick-user', methods=['POST'])
 @login_required
 def kick_user():
-    if session.get('perfil') != 'admin':
-        return jsonify({'ok': False, 'msg': 'Apenas administradores podem derrubar usuarios'}), 403
     data    = request.json
     usuario = data.get('usuario', '')
     if not usuario:
@@ -685,8 +683,6 @@ def db_resources_8480():
 @app.route('/api/kick-user-8480', methods=['POST'])
 @login_required
 def kick_user_8480():
-    if session.get('perfil') != 'admin':
-        return jsonify({'ok': False, 'msg': 'Apenas administradores podem derrubar usuarios'}), 403
     data    = request.json
     usuario = data.get('usuario', '')
     if not usuario:
@@ -734,8 +730,6 @@ def db_resources_8580():
 @app.route('/api/kick-user-8580', methods=['POST'])
 @login_required
 def kick_user_8580():
-    if session.get('perfil') != 'admin':
-        return jsonify({'ok': False, 'msg': 'Apenas administradores podem derrubar usuarios'}), 403
     data    = request.json
     usuario = data.get('usuario', '')
     if not usuario:
