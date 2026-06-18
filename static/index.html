@@ -8,24 +8,24 @@
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { background: #0d1117; color: #e6edf3; font-family: 'Segoe UI', sans-serif; padding: 16px; }
-.topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; flex-wrap: wrap; gap: 8px; }
 h1 { font-size: 18px; color: #58a6ff; }
 .subtitle { font-size: 12px; color: #8b949e; margin-bottom: 16px; }
 .user-info { font-size: 12px; color: #8b949e; display: flex; align-items: center; gap: 10px; }
 .btn-logout { background: #21262d; border: 1px solid #30363d; color: #e6edf3; border-radius: 6px; padding: 4px 12px; font-size: 11px; cursor: pointer; }
 .btn-logout:hover { background: #da3633; border-color: #da3633; }
-.tab-bar { display: flex; gap: 4px; margin-bottom: 16px; }
-.tab { background: #21262d; border: 1px solid #30363d; color: #8b949e; border-radius: 6px; padding: 6px 16px; font-size: 12px; cursor: pointer; }
+.tab-bar { display: flex; gap: 4px; margin-bottom: 16px; flex-wrap: wrap; }
+.tab { background: #21262d; border: 1px solid #30363d; color: #8b949e; border-radius: 6px; padding: 6px 16px; font-size: 12px; cursor: pointer; white-space: nowrap; }
 .tab.active { background: #1f6feb; border-color: #1f6feb; color: #fff; }
 .tab-content { display: none; }
 .tab-content.active { display: block; }
-.modal-bg { display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:100; align-items:center; justify-content:center; }
+.modal-bg { display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:100; align-items:center; justify-content:center; padding: 12px; }
 .modal-bg.open { display:flex; }
 .modal { background:#161b22; border:1px solid #30363d; border-radius:10px; padding:28px; width:100%; max-width:400px; }
 .modal h3 { font-size:15px; margin-bottom:18px; color:#58a6ff; }
 .modal label { display:block; font-size:11px; color:#8b949e; margin-bottom:4px; margin-top:12px; }
 .modal input, .modal select { width:100%; background:#0d1117; border:1px solid #30363d; border-radius:6px; color:#e6edf3; padding:8px 10px; font-size:13px; }
-.modal-btns { display:flex; gap:8px; margin-top:20px; justify-content:flex-end; }
+.modal-btns { display:flex; gap:8px; margin-top:20px; justify-content:flex-end; flex-wrap:wrap; }
 .btn-primary { background:#238636; color:#fff; border:none; border-radius:6px; padding:8px 18px; font-size:12px; cursor:pointer; }
 .btn-cancel  { background:#21262d; color:#e6edf3; border:1px solid #30363d; border-radius:6px; padding:8px 18px; font-size:12px; cursor:pointer; }
 .btn-sm { padding:2px 10px; border-radius:4px; font-size:10px; cursor:pointer; border:none; }
@@ -35,23 +35,24 @@ h1 { font-size: 18px; color: #58a6ff; }
 .badge-viewer { background:#1c2128; color:#8b949e; padding:1px 7px; border-radius:10px; font-size:10px; }
 #status { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 12px; background: #238636; color: #fff; margin-left: 8px; }
 #status.offline { background: #da3633; }
-.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
-.card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 16px; }
-.card h2 { font-size: 13px; color: #8b949e; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+.grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 16px; min-width: 0; }
+.card h2 { font-size: 13px; color: #8b949e; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .gauge-row { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
-.gauge-label { width: 70px; font-size: 12px; color: #8b949e; }
-.gauge-bar { flex: 1; height: 8px; background: #21262d; border-radius: 4px; overflow: hidden; }
+.gauge-label { width: 70px; font-size: 12px; color: #8b949e; flex-shrink: 0; }
+.gauge-bar { flex: 1; height: 8px; background: #21262d; border-radius: 4px; overflow: hidden; min-width: 40px; }
 .gauge-fill { height: 100%; border-radius: 4px; transition: width 0.5s; }
 .gauge-fill.ok { background: #238636; }
 .gauge-fill.warn { background: #d29922; }
 .gauge-fill.crit { background: #da3633; }
-.gauge-val { width: 45px; font-size: 12px; text-align: right; font-weight: 600; }
+.gauge-val { width: 45px; font-size: 12px; text-align: right; font-weight: 600; flex-shrink: 0; }
 .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .stat { background: #0d1117; border-radius: 6px; padding: 10px; }
 .stat .val { font-size: 22px; font-weight: 700; color: #58a6ff; }
 .stat .lbl { font-size: 11px; color: #8b949e; margin-top: 2px; }
-table { width: 100%; font-size: 11px; border-collapse: collapse; }
-th { color: #8b949e; font-weight: 500; text-align: left; padding: 4px 6px; border-bottom: 1px solid #21262d; }
+.table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+table { width: 100%; font-size: 11px; border-collapse: collapse; min-width: 400px; }
+th { color: #8b949e; font-weight: 500; text-align: left; padding: 4px 6px; border-bottom: 1px solid #21262d; white-space: nowrap; }
 td { padding: 4px 6px; border-bottom: 1px solid #161b22; color: #c9d1d9; }
 tr:hover td { background: #21262d; }
 .badge { display: inline-block; padding: 1px 6px; border-radius: 10px; font-size: 10px; font-weight: 600; }
@@ -64,18 +65,18 @@ tr:hover td { background: #21262d; }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
 canvas { max-height: 120px; }
 #ts { font-size: 11px; color: #8b949e; margin-top: 12px; }
-.btn-kick { background: #3d0f0f; color: #f85149; border: 1px solid #da3633; border-radius: 4px; padding: 2px 8px; font-size: 10px; cursor: pointer; }
+.btn-kick { background: #3d0f0f; color: #f85149; border: 1px solid #da3633; border-radius: 4px; padding: 2px 8px; font-size: 10px; cursor: pointer; white-space: nowrap; }
 .btn-kick:hover { background: #da3633; color: #fff; }
-.bkp-log { background: #0d1117; border-radius: 6px; padding: 10px; font-family: monospace; font-size: 10px; max-height: 150px; overflow-y: auto; margin-top: 10px; }
+.bkp-log { background: #0d1117; border-radius: 6px; padding: 10px; font-family: monospace; font-size: 10px; max-height: 150px; overflow-y: auto; margin-top: 10px; word-break: break-word; }
 .bkp-log .log-ok { color: #3fb950; }
 .bkp-log .log-err { color: #f85149; }
 .bkp-log .log-info { color: #8b949e; }
-.toast { position: fixed; bottom: 20px; right: 20px; background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 12px 16px; font-size: 12px; z-index: 999; display: none; }
+.toast { position: fixed; bottom: 20px; right: 20px; background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 12px 16px; font-size: 12px; z-index: 999; display: none; max-width: calc(100vw - 40px); }
 .toast.show { display: block; }
 .toast.success { border-color: #238636; color: #3fb950; }
 .toast.error { border-color: #da3633; color: #f85149; }
 .counter-badge { background: #21262d; color: #58a6ff; border-radius: 10px; padding: 1px 7px; font-size: 11px; font-weight: 700; }
-.btn-action { border: none; border-radius: 6px; padding: 7px 16px; font-size: 12px; font-weight: 600; cursor: pointer; }
+.btn-action { border: none; border-radius: 6px; padding: 7px 16px; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; }
 .btn-action.derruba  { background: #3d0f0f; color: #f85149; border: 1px solid #da3633; }
 .btn-action.derruba:hover  { background: #da3633; color: #fff; }
 .btn-action.inicia   { background: #0f3d1f; color: #3fb950; border: 1px solid #238636; }
@@ -85,11 +86,40 @@ canvas { max-height: 120px; }
 .btn-action.bkp      { background: #2d1f00; color: #e3a14f; border: 1px solid #a36a00; }
 .btn-action.bkp:hover      { background: #a36a00; color: #fff; }
 .btn-action:disabled { opacity: 0.4; cursor: not-allowed; }
+.actions-bar { display: flex; gap: 8px; margin-top: 14px; align-items: center; flex-wrap: wrap; }
 .admin-only { display: none; }
-.job-log { background: #0d1117; border-radius: 6px; padding: 10px; font-family: monospace; font-size: 10px; max-height: 320px; overflow-y: auto; margin-top: 10px; white-space: pre-wrap; }
+.job-log { background: #0d1117; border-radius: 6px; padding: 10px; font-family: monospace; font-size: 10px; max-height: 320px; overflow-y: auto; margin-top: 10px; white-space: pre-wrap; word-break: break-word; }
 .job-log .log-ok   { color: #3fb950; }
 .job-log .log-err  { color: #f85149; }
 .job-log .log-info { color: #8b949e; }
+
+/* ── Responsivo: Desktop largo (≥1200px) — 4 colunas ── */
+@media (min-width: 1200px) {
+  .grid { grid-template-columns: repeat(4, 1fr); }
+}
+/* ── Tablet largo (900–1199px) — 2 colunas ── */
+@media (max-width: 1199px) {
+  .grid { grid-template-columns: repeat(2, 1fr); }
+}
+/* ── Tablet estreito / mobile grande (600–899px) — 1 coluna, span vira full ── */
+@media (max-width: 899px) {
+  .grid { grid-template-columns: 1fr; }
+  .grid > * { grid-column: span 1 !important; }
+  .stat .val { font-size: 18px; }
+}
+/* ── Mobile (≤599px) ── */
+@media (max-width: 599px) {
+  body { padding: 8px; }
+  h1 { font-size: 15px; }
+  .subtitle { font-size: 11px; margin-bottom: 10px; }
+  .card { padding: 12px; }
+  .card h2 { font-size: 12px; }
+  .stat .val { font-size: 16px; }
+  .gauge-label { width: 50px; font-size: 11px; }
+  .tab { font-size: 11px; padding: 5px 10px; }
+  table { min-width: 320px; font-size: 10px; }
+  th, td { padding: 3px 4px; }
+}
 </style>
 </head>
 <body>
@@ -185,7 +215,7 @@ canvas { max-height: 120px; }
   <!-- Usuários Conectados -->
   <div class="card" style="grid-column: span 2">
     <h2>Usuários Conectados <span class="counter-badge" id="user-count">0</span></h2>
-    <div style="max-height:260px;overflow-y:auto;border-radius:6px;border:1px solid #21262d;">
+    <div class="table-wrap" style="max-height:260px;overflow-y:auto;border-radius:6px;border:1px solid #21262d;">
     <table style="margin:0">
       <thead style="position:sticky;top:0;background:#161b22;z-index:1">
         <tr><th>Usuário</th><th>Tipo</th><th>Workstation</th><th>Hora Login</th><th>Bancos</th><th>Ação</th></tr>
@@ -198,32 +228,32 @@ canvas { max-height: 120px; }
   <!-- Bancos Progress -->
   <div class="card" style="grid-column: span 2">
     <h2>Bancos Progress (Conexões TCP Ativas)</h2>
-    <table>
+    <div class="table-wrap"><table>
       <tr><th>Banco</th><th>Porta</th><th>Conexões</th><th>Status</th></tr>
       <tbody id="db-table"></tbody>
-    </table>
+    </table></div>
   </div>
 
   <!-- Processos Progress -->
   <div class="card" style="grid-column: span 2">
     <h2>Processos Progress (proserve)</h2>
-    <table>
+    <div class="table-wrap"><table>
       <tr><th>PID</th><th>CPU%</th><th>MEM%</th><th>Banco</th><th>Comando</th></tr>
       <tbody id="proc-table"></tbody>
-    </table>
+    </table></div>
   </div>
 
   <!-- Recursos por Banco -->
   <div class="card" style="grid-column: span 2">
     <h2>Recursos por Banco Progress</h2>
-    <table>
+    <div class="table-wrap"><table>
       <tr><th>Banco</th><th>CPU%</th><th>Memória (MB)</th><th>I/O Leitura</th><th>I/O Escrita</th><th>Tamanho .db</th><th>Status</th></tr>
       <tbody id="dbres-table"><tr><td colspan="7" style="color:#8b949e">Carregando...</td></tr></tbody>
-    </table>
+    </table></div>
   </div>
 
 </div>
-<div style="display:flex;gap:8px;margin-top:14px;align-items:center" id="actions-8380">
+<div class="actions-bar" id="actions-8380">
   <button class="btn-action bkp admin-only"    onclick="bancoAction('8380','bkp')">&#x1F4BE; Executa BKP Online</button>
   <button class="btn-action derruba admin-only" onclick="bancoAction('8380','derruba')">⏹ Derruba Base 8380</button>
   <button class="btn-action inicia admin-only"  onclick="bancoAction('8380','inicia')">▶ Inicia Base 8380</button>
@@ -301,7 +331,7 @@ canvas { max-height: 120px; }
 
   <div class="card" style="grid-column: span 2">
     <h2>Usuários Conectados <span class="counter-badge" id="user-count-8480">0</span></h2>
-    <div style="max-height:260px;overflow-y:auto;border-radius:6px;border:1px solid #21262d;">
+    <div class="table-wrap" style="max-height:260px;overflow-y:auto;border-radius:6px;border:1px solid #21262d;">
     <table style="margin:0">
       <thead style="position:sticky;top:0;background:#161b22;z-index:1">
         <tr><th>Usuário</th><th>Tipo</th><th>Workstation</th><th>Hora Login</th><th>Bancos</th><th>Ação</th></tr>
@@ -313,30 +343,30 @@ canvas { max-height: 120px; }
 
   <div class="card" style="grid-column: span 2">
     <h2>Bancos Progress HML 8480 (Conexões TCP Ativas)</h2>
-    <table>
+    <div class="table-wrap"><table>
       <tr><th>Banco</th><th>Porta</th><th>Conexões</th><th>Status</th></tr>
       <tbody id="db-table-8480"></tbody>
-    </table>
+    </table></div>
   </div>
 
   <div class="card" style="grid-column: span 2">
     <h2>Processos Progress HML 8480 (proserve)</h2>
-    <table>
+    <div class="table-wrap"><table>
       <tr><th>PID</th><th>CPU%</th><th>MEM%</th><th>Banco</th><th>Comando</th></tr>
       <tbody id="proc-table-8480"></tbody>
-    </table>
+    </table></div>
   </div>
 
   <div class="card" style="grid-column: span 2">
     <h2>Recursos por Banco Progress HML 8480</h2>
-    <table>
+    <div class="table-wrap"><table>
       <tr><th>Banco</th><th>CPU%</th><th>Memória (MB)</th><th>I/O Leitura</th><th>I/O Escrita</th><th>Tamanho .db</th><th>Status</th></tr>
       <tbody id="dbres-table-8480"><tr><td colspan="7" style="color:#8b949e">Carregando...</td></tr></tbody>
-    </table>
+    </table></div>
   </div>
 
 </div>
-<div style="display:flex;gap:8px;margin-top:14px;align-items:center">
+<div class="actions-bar">
   <button class="btn-action derruba admin-only" onclick="bancoAction('8480','derruba')">⏹ Derruba Base 8480</button>
   <button class="btn-action inicia admin-only"  onclick="bancoAction('8480','inicia')">▶ Inicia Base 8480</button>
   <button class="btn-action atualiza admin-only" onclick="bancoAction('8480','atualiza')">&#x1F504; Atualiza Base (prod&#x2192;hml)</button>
@@ -419,7 +449,7 @@ canvas { max-height: 120px; }
   <!-- Usuários 8580 -->
   <div class="card" style="grid-column: span 2">
     <h2>Usuários Conectados <span class="counter-badge" id="user-count-8580">0</span></h2>
-    <div style="max-height:260px;overflow-y:auto;border-radius:6px;border:1px solid #21262d;">
+    <div class="table-wrap" style="max-height:260px;overflow-y:auto;border-radius:6px;border:1px solid #21262d;">
     <table style="margin:0">
       <thead style="position:sticky;top:0;background:#161b22;z-index:1">
         <tr><th>Usuário</th><th>Tipo</th><th>Workstation</th><th>Hora Login</th><th>Bancos</th><th>Ação</th></tr>
@@ -432,32 +462,32 @@ canvas { max-height: 120px; }
   <!-- Bancos Progress 8580 -->
   <div class="card" style="grid-column: span 2">
     <h2>Bancos Progress HML 8580 (Conexões TCP Ativas)</h2>
-    <table>
+    <div class="table-wrap"><table>
       <tr><th>Banco</th><th>Porta</th><th>Conexões</th><th>Status</th></tr>
       <tbody id="db-table-8580"></tbody>
-    </table>
+    </table></div>
   </div>
 
   <!-- Processos Progress 8580 -->
   <div class="card" style="grid-column: span 2">
     <h2>Processos Progress HML 8580 (proserve)</h2>
-    <table>
+    <div class="table-wrap"><table>
       <tr><th>PID</th><th>CPU%</th><th>MEM%</th><th>Banco</th><th>Comando</th></tr>
       <tbody id="proc-table-8580"></tbody>
-    </table>
+    </table></div>
   </div>
 
   <!-- Recursos por Banco 8580 -->
   <div class="card" style="grid-column: span 2">
     <h2>Recursos por Banco Progress HML 8580</h2>
-    <table>
+    <div class="table-wrap"><table>
       <tr><th>Banco</th><th>CPU%</th><th>Memória (MB)</th><th>I/O Leitura</th><th>I/O Escrita</th><th>Tamanho .db</th><th>Status</th></tr>
       <tbody id="dbres-table-8580"><tr><td colspan="7" style="color:#8b949e">Carregando...</td></tr></tbody>
-    </table>
+    </table></div>
   </div>
 
 </div>
-<div style="display:flex;gap:8px;margin-top:14px;align-items:center" id="actions-8580">
+<div class="actions-bar" id="actions-8580">
   <button class="btn-action derruba admin-only" onclick="bancoAction('8580','derruba')">⏹ Derruba Base 8580</button>
   <button class="btn-action inicia admin-only"  onclick="bancoAction('8580','inicia')">▶ Inicia Base 8580</button>
   <button class="btn-action atualiza admin-only" onclick="bancoAction('8580','atualiza')">🔄 Atualiza Base (prod→hml)</button>
@@ -473,10 +503,10 @@ canvas { max-height: 120px; }
       Usuários do Sistema
       <button class="btn-primary btn-sm" style="padding:4px 14px;font-size:11px" onclick="abrirModal()">+ Novo Usuário</button>
     </h2>
-    <table id="tbl-usuarios">
+    <div class="table-wrap"><table id="tbl-usuarios">
       <tr><th>Login</th><th>Nome</th><th>Perfil</th><th>Status</th><th>Criado em</th><th>Ações</th></tr>
       <tbody id="tbody-usuarios"></tbody>
-    </table>
+    </table></div>
   </div>
 </div>
 
