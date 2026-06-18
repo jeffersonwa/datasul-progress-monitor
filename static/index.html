@@ -169,11 +169,11 @@ canvas { max-height: 120px; }
 <div class="grid">
 
   <!-- Status Backup -->
-  <div class="card">
-    <h2>Backup Online
+  <div class="card" style="grid-column: span 2">
+    <h2>Backup Online 8380
       <span id="bkp-badge" class="badge idle">--</span>
     </h2>
-    <div class="stat-grid">
+    <div class="stat-grid" style="grid-template-columns:repeat(3,1fr)">
       <div class="stat">
         <div class="val" id="bkp-mount" style="font-size:14px">--</div>
         <div class="lbl">Compartilhamento</div>
@@ -182,12 +182,13 @@ canvas { max-height: 120px; }
         <div class="val" id="bkp-date" style="font-size:14px">--</div>
         <div class="lbl">Último backup</div>
       </div>
-      <div class="stat" style="grid-column:span 2">
+      <div class="stat">
         <div class="val" id="bkp-result" style="font-size:13px">--</div>
         <div class="lbl">Resultado</div>
       </div>
     </div>
-    <div class="bkp-log" id="bkp-log"></div>
+    <div id="bkp-bancos" style="display:flex;flex-wrap:wrap;gap:5px;margin-top:10px"></div>
+    <div class="bkp-log" id="bkp-log" style="margin-top:8px"></div>
   </div>
 
   <!-- Bancos Progress -->
@@ -651,6 +652,16 @@ async function refreshBackup() {
     document.getElementById('bkp-mount').style.color = d.mount_ok ? '#3fb950' : '#f85149';
     document.getElementById('bkp-date').textContent = d.last_log_date || '--';
     document.getElementById('bkp-result').textContent = d.last_result || '--';
+    // Status por banco individual
+    const bancosDiv = document.getElementById('bkp-bancos');
+    if (d.banco_status && Object.keys(d.banco_status).length) {
+      bancosDiv.innerHTML = Object.entries(d.banco_status).map(([b, s]) => {
+        const ok = s === 'OK';
+        return `<span style="font-size:11px;padding:3px 8px;border-radius:4px;font-weight:600;
+          background:${ok?'#0f3d1f':'#3d0f0f'};color:${ok?'#3fb950':'#f85149'};
+          border:1px solid ${ok?'#238636':'#da3633'}">${b} ${ok?'✓':'✗'}</span>`;
+      }).join('');
+    }
     const logDiv = document.getElementById('bkp-log');
     if (d.last_log_lines.length) {
       logDiv.innerHTML = d.last_log_lines.map(l => {

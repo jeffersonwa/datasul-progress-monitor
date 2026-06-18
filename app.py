@@ -236,7 +236,7 @@ def get_progress_users():
 
 def get_backup_status():
     status = {'running': False, 'pid': None, 'last_log_date': None,
-              'last_log_lines': [], 'last_result': None,
+              'last_log_lines': [], 'last_result': None, 'banco_status': {},
               'mount_ok': os.path.ismount('/mnt/backup-progress')}
     try:
         out = subprocess.check_output(['pgrep', '-af', 'probkup'], text=True)
@@ -252,10 +252,23 @@ def get_backup_status():
             status['last_log_date'] = os.path.basename(last).replace('backup-','').replace('.log','')
             with open(last) as f:
                 lines = [l.rstrip() for l in f.readlines() if l.strip()]
-            status['last_log_lines'] = lines[-30:]
-            erros = [l for l in lines if 'ERRO' in l]
-            oks   = [l for l in lines if l.startswith('OK:')]
-            status['last_result'] = f'ERRO ({len(erros)} falha(s))' if erros else (f'OK ({len(oks)} banco(s))' if oks else 'Incompleto')
+            status['last_log_lines'] = lines[-40:]
+            # Pega apenas a última execução (após o último === INICIO ===)
+            start_idx = 0
+            for i, l in enumerate(lines):
+                if '=== INICIO' in l:
+                    start_idx = i
+            run_lines = lines[start_idx:]
+            banco_status = {}
+            for l in run_lines:
+                if l.startswith('OK:'):
+                    banco_status[l.split(':', 1)[1].strip()] = 'OK'
+                elif l.startswith('ERRO:'):
+                    banco_status[l.split(':', 1)[1].strip()] = 'ERRO'
+            status['banco_status'] = banco_status
+            erros = [b for b, s in banco_status.items() if s == 'ERRO']
+            oks   = [b for b, s in banco_status.items() if s == 'OK']
+            status['last_result'] = f'ERRO ({len(erros)} falha(s))' if erros else (f'OK ({len(oks)} banco(s))' if oks else ('Em andamento...' if status['running'] else 'Incompleto'))
     except:
         pass
     return status
