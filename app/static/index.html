@@ -1,0 +1,1505 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Monitor Datasul — db-progress001</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg:       #080d14;
+  --s0:       #0d1420;
+  --s1:       #111827;
+  --s2:       #1a2236;
+  --border:   #1e2d45;
+  --border2:  #243552;
+  --text:     #e2e8f0;
+  --muted:    #64748b;
+  --sub:      #94a3b8;
+  --blue:     #3b82f6;
+  --green:    #22c55e;
+  --amber:    #f59e0b;
+  --red:      #ef4444;
+  --violet:   #8b5cf6;
+  --blue-dim: rgba(59,130,246,.12);
+  --grn-dim:  rgba(34,197,94,.12);
+  --red-dim:  rgba(239,68,68,.12);
+  --amb-dim:  rgba(245,158,11,.12);
+  --vio-dim:  rgba(139,92,246,.12);
+  --r:        10px;
+  --rsm:      6px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
+
+/* ── TOPBAR ── */
+.topbar {
+  position: sticky; top: 0; z-index: 50;
+  background: rgba(8,13,20,.88); backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 20px; height: 56px; gap: 12px; flex-wrap: wrap;
+}
+.topbar-brand { display: flex; align-items: center; gap: 10px; }
+.topbar-logo {
+  width: 34px; height: 34px; border-radius: 8px; flex-shrink: 0;
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 900; color: #fff; letter-spacing: -1px;
+}
+.topbar-title { font-size: 14px; font-weight: 700; color: var(--text); }
+.topbar-sub   { font-size: 11px; color: var(--muted); }
+
+#status {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 10px; border-radius: 20px; font-size: 10px; font-weight: 700; letter-spacing: .5px;
+  background: var(--grn-dim); color: var(--green); border: 1px solid rgba(34,197,94,.25);
+  margin-left: 8px;
+}
+#status::before {
+  content: ''; width: 6px; height: 6px; border-radius: 50%;
+  background: currentColor; animation: blink 2s infinite;
+}
+#status.offline { background: var(--red-dim); color: var(--red); border-color: rgba(239,68,68,.25); }
+#status.offline::before { animation: none; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+.user-info { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--sub); }
+.user-avatar {
+  width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+  background: var(--s2); border: 1px solid var(--border2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700; color: var(--blue);
+}
+.btn-logout {
+  background: transparent; border: 1px solid var(--border2);
+  color: var(--sub); border-radius: var(--rsm);
+  padding: 5px 13px; font-size: 11px; cursor: pointer; transition: all .2s;
+}
+.btn-logout:hover { background: var(--red-dim); border-color: rgba(239,68,68,.4); color: var(--red); }
+
+/* ── MAIN ── */
+.main { padding: 20px; max-width: 1600px; margin: 0 auto; }
+
+/* ── TAB BAR ── */
+.tab-bar {
+  display: flex; gap: 3px; margin-bottom: 20px;
+  background: var(--s1); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 4px; flex-wrap: wrap;
+}
+.tab {
+  flex: 1; min-width: 90px;
+  background: transparent; border: none; color: var(--muted);
+  border-radius: var(--rsm); padding: 9px 18px;
+  font-size: 12px; font-weight: 500; cursor: pointer;
+  white-space: nowrap; transition: all .2s; position: relative;
+}
+.tab:hover { color: var(--text); background: var(--s2); }
+.tab.active {
+  background: var(--s0); color: var(--text); font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0,0,0,.35);
+}
+.tab.active::after {
+  content: ''; position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%);
+  width: 20px; height: 2px; border-radius: 2px; background: var(--blue);
+}
+.tab[data-env="hml8480"].active::after { background: var(--amber); }
+.tab[data-env="hml8580"].active::after { background: var(--violet); }
+.tab[data-env="usuarios"].active::after { background: var(--green); }
+
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* ── SECTION HEADER ── */
+.sec { display: flex; align-items: center; gap: 10px; margin: 0 0 14px; }
+.sec + .sec, .grid-3 + .sec, .grid-2 + .sec { margin-top: 22px; }
+.sec-icon {
+  width: 26px; height: 26px; border-radius: 7px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; font-size: 13px;
+}
+.sec-label { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+.sec-line { flex: 1; height: 1px; background: var(--border); }
+
+/* ── GRIDS ── */
+.grid   { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 14px; }
+.grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+
+/* ── CARD ── */
+.card {
+  background: var(--s1); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 18px; min-width: 0;
+  transition: border-color .2s, box-shadow .2s;
+}
+.card:hover { border-color: var(--border2); box-shadow: 0 4px 20px rgba(0,0,0,.3); }
+.card h2 {
+  font-size: 10px; font-weight: 700; letter-spacing: 1.2px;
+  text-transform: uppercase; color: var(--muted);
+  margin-bottom: 14px;
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+}
+.ci { width: 22px; height: 22px; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0; }
+.ci-blue   { background: var(--blue-dim); }
+.ci-green  { background: var(--grn-dim); }
+.ci-amber  { background: var(--amb-dim); }
+.ci-red    { background: var(--red-dim); }
+.ci-violet { background: var(--vio-dim); }
+
+/* ── GAUGES ── */
+.gauge-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.gauge-label { width: 58px; font-size: 11px; color: var(--muted); flex-shrink: 0; }
+.gauge-bar { flex: 1; height: 10px; background: var(--s2); border-radius: 5px; overflow: hidden; min-width: 40px; }
+.gauge-fill { height: 100%; border-radius: 5px; transition: width .6s cubic-bezier(.4,0,.2,1); }
+.gauge-fill.ok   { background: linear-gradient(90deg, #16a34a, #22c55e); }
+.gauge-fill.warn { background: linear-gradient(90deg, #d97706, #f59e0b); }
+.gauge-fill.crit { background: linear-gradient(90deg, #dc2626, #ef4444); }
+.gauge-val { width: 42px; font-size: 12px; font-weight: 700; text-align: right; flex-shrink: 0; }
+
+/* ── STAT GRID ── */
+.stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.stat { background: var(--s0); border: 1px solid var(--border); border-radius: var(--rsm); padding: 10px 12px; }
+.stat .val { font-size: 22px; font-weight: 800; color: var(--blue); line-height: 1.1; }
+.stat .lbl { font-size: 10px; color: var(--muted); margin-top: 4px; }
+
+canvas { max-height: 110px; }
+
+/* ── TIMESTAMP ── */
+.ts-line { font-size: 11px; color: var(--muted); margin-top: 16px; }
+
+/* ── TABLES ── */
+.table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: var(--rsm); border: 1px solid var(--border); }
+table { width: 100%; font-size: 11px; border-collapse: collapse; min-width: 380px; }
+thead { background: var(--s2); }
+th {
+  color: var(--muted); font-weight: 600; text-align: left;
+  padding: 8px 10px; border-bottom: 1px solid var(--border);
+  font-size: 10px; letter-spacing: .6px; text-transform: uppercase; white-space: nowrap;
+}
+td { padding: 7px 10px; border-bottom: 1px solid var(--border); color: var(--sub); }
+tr:last-child td { border-bottom: none; }
+tbody tr:nth-child(even) td { background: rgba(26,34,54,.4); }
+tbody tr:hover td { background: var(--s2) !important; }
+
+/* ── BADGES ── */
+.badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 9px; border-radius: 20px;
+  font-size: 10px; font-weight: 700; letter-spacing: .4px; white-space: nowrap;
+}
+.badge.up      { background: var(--grn-dim); color: var(--green); border: 1px solid rgba(34,197,94,.2); }
+.badge.idle    { background: var(--s2); color: var(--muted); border: 1px solid var(--border); }
+.badge.running { background: var(--blue-dim); color: var(--blue); border: 1px solid rgba(59,130,246,.2); animation: pulse 1.5s infinite; }
+.badge.ok-bkp  { background: var(--grn-dim); color: var(--green); border: 1px solid rgba(34,197,94,.2); }
+.badge.err     { background: var(--red-dim); color: var(--red); border: 1px solid rgba(239,68,68,.2); }
+.badge.warn-bkp{ background: var(--amb-dim); color: var(--amber); border: 1px solid rgba(245,158,11,.2); }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+
+.badge-admin  { background: var(--blue-dim); color: var(--blue); padding: 2px 9px; border-radius: 20px; font-size: 10px; font-weight: 700; }
+.badge-viewer { background: var(--s2); color: var(--muted); padding: 2px 9px; border-radius: 20px; font-size: 10px; }
+.counter-badge { background: var(--blue-dim); color: var(--blue); border-radius: 20px; padding: 2px 9px; font-size: 11px; font-weight: 700; }
+
+/* ── KICK BUTTON ── */
+.btn-kick {
+  background: var(--red-dim); color: var(--red);
+  border: 1px solid rgba(239,68,68,.25); border-radius: var(--rsm);
+  padding: 3px 10px; font-size: 10px; cursor: pointer; white-space: nowrap; transition: all .2s;
+}
+.btn-kick:hover { background: var(--red); color: #fff; }
+
+/* ── BKP LOG ── */
+.bkp-log {
+  background: var(--s0); border: 1px solid var(--border); border-radius: var(--rsm);
+  padding: 10px; font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  font-size: 10px; max-height: 130px; overflow-y: auto; line-height: 1.6; margin-top: 8px;
+}
+.bkp-log .log-ok   { color: var(--green); }
+.bkp-log .log-err  { color: var(--red); }
+.bkp-log .log-info { color: var(--muted); }
+
+/* ── JOB LOG ── */
+.job-log {
+  background: var(--s0); border: 1px solid var(--border); border-radius: var(--rsm);
+  padding: 12px; font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  font-size: 10px; max-height: 320px; overflow-y: auto; white-space: pre-wrap;
+  word-break: break-word; line-height: 1.6;
+}
+.job-log .log-ok   { color: var(--green); }
+.job-log .log-err  { color: var(--red); }
+.job-log .log-info { color: var(--muted); }
+
+/* ── ACTIONS BAR ── */
+.actions-bar {
+  display: flex; gap: 8px; margin-top: 16px; align-items: center; flex-wrap: wrap;
+  padding: 14px 18px; background: var(--s1);
+  border: 1px solid var(--border); border-radius: var(--r);
+}
+.actions-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-right: 4px; flex-shrink: 0; }
+.admin-only { display: none; }
+
+.btn-action {
+  border: 1px solid transparent; border-radius: var(--rsm);
+  padding: 7px 16px; font-size: 12px; font-weight: 600;
+  cursor: pointer; white-space: nowrap; transition: all .2s;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.btn-action.bkp     { background: var(--amb-dim); color: var(--amber); border-color: rgba(245,158,11,.3); }
+.btn-action.bkp:hover { background: var(--amber); color: #000; }
+.btn-action.derruba  { background: var(--red-dim); color: var(--red); border-color: rgba(239,68,68,.3); }
+.btn-action.derruba:hover { background: var(--red); color: #fff; }
+.btn-action.inicia   { background: var(--grn-dim); color: var(--green); border-color: rgba(34,197,94,.3); }
+.btn-action.inicia:hover { background: var(--green); color: #000; }
+.btn-action.atualiza { background: var(--blue-dim); color: var(--blue); border-color: rgba(59,130,246,.3); }
+.btn-action.atualiza:hover { background: var(--blue); color: #fff; }
+.btn-action:disabled { opacity: .35; cursor: not-allowed; }
+
+/* ── MODAL ── */
+.modal-bg {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,.65); backdrop-filter: blur(8px);
+  z-index: 100; align-items: center; justify-content: center; padding: 16px;
+}
+.modal-bg.open { display: flex; }
+.modal {
+  background: var(--s1); border: 1px solid var(--border2);
+  border-radius: 14px; padding: 28px; width: 100%; max-width: 420px;
+  box-shadow: 0 24px 80px rgba(0,0,0,.6);
+}
+.modal h3 { font-size: 16px; margin-bottom: 20px; color: var(--text); font-weight: 700; }
+.modal label { display: block; font-size: 10px; color: var(--muted); margin-bottom: 5px; margin-top: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
+.modal input, .modal select {
+  width: 100%; background: var(--s0); border: 1px solid var(--border);
+  border-radius: var(--rsm); color: var(--text); padding: 9px 12px; font-size: 13px; transition: border-color .2s;
+}
+.modal input:focus, .modal select:focus { outline: none; border-color: var(--blue); }
+.modal-btns { display: flex; gap: 8px; margin-top: 22px; justify-content: flex-end; }
+.btn-primary { background: var(--blue); color: #fff; border: none; border-radius: var(--rsm); padding: 9px 20px; font-size: 12px; font-weight: 600; cursor: pointer; transition: filter .2s; }
+.btn-primary:hover { filter: brightness(1.15); }
+.btn-cancel  { background: var(--s2); color: var(--sub); border: 1px solid var(--border); border-radius: var(--rsm); padding: 9px 20px; font-size: 12px; cursor: pointer; transition: background .2s; }
+.btn-cancel:hover { background: var(--border2); }
+.btn-sm { padding: 4px 12px; border-radius: var(--rsm); font-size: 10px; cursor: pointer; border: 1px solid transparent; font-weight: 600; }
+.btn-edit { background: var(--blue-dim); color: var(--blue); border-color: rgba(59,130,246,.25) !important; }
+.btn-del  { background: var(--red-dim);  color: var(--red);  border-color: rgba(239,68,68,.25) !important; }
+
+/* ── TOAST ── */
+.toast {
+  position: fixed; bottom: 24px; right: 24px;
+  background: var(--s1); border: 1px solid var(--border2);
+  border-radius: var(--r); padding: 13px 18px;
+  font-size: 12px; font-weight: 500; z-index: 999;
+  max-width: calc(100vw - 48px);
+  box-shadow: 0 8px 32px rgba(0,0,0,.5);
+  display: none; transform: translateY(12px); opacity: 0;
+  transition: transform .25s, opacity .25s;
+}
+.toast.show { display: block; transform: translateY(0); opacity: 1; }
+.toast.success { border-left: 3px solid var(--green); color: var(--green); }
+.toast.error   { border-left: 3px solid var(--red);   color: var(--red); }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 1199px) {
+  .grid   { grid-template-columns: repeat(2, 1fr); }
+  .grid-3 { grid-template-columns: repeat(3, 1fr); }
+  .grid-2 { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 900px) {
+  .grid-3 { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 767px) {
+  .grid, .grid-3, .grid-2 { grid-template-columns: 1fr; }
+  .grid > *, .grid-2 > * { grid-column: span 1 !important; }
+  .stat .val { font-size: 18px; }
+  .main { padding: 12px; }
+}
+@media (max-width: 599px) {
+  .topbar { height: auto; padding: 10px 14px; }
+  .card { padding: 14px; }
+  table { min-width: 320px; font-size: 10px; }
+  th, td { padding: 5px 7px; }
+  .tab-bar { gap: 2px; padding: 3px; }
+  .tab { padding: 8px 10px; font-size: 11px; min-width: 70px; }
+}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-brand">
+    <div class="topbar-logo">PP</div>
+    <div>
+      <div class="topbar-title">Monitor Datasul/Progress <span id="status">ONLINE</span></div>
+      <div class="topbar-sub">db-progress001 &mdash; 192.168.7.9 &mdash; atualiza a cada 5s</div>
+    </div>
+  </div>
+  <div class="user-info">
+    <div class="user-avatar" id="user-avatar">?</div>
+    <span id="user-label"></span>
+    <button class="btn-logout" onclick="logout()">Sair</button>
+  </div>
+</div>
+
+<div class="main">
+
+<div class="tab-bar">
+  <button class="tab active" data-env="monitor"   onclick="switchTab('monitor')">&#9671; Monitor 8380</button>
+  <button class="tab"        data-env="hml8480"   onclick="switchTab('hml8480')">&#9671; HML 8480</button>
+  <button class="tab"        data-env="hml8580"   onclick="switchTab('hml8580')">&#9671; HML 8580</button>
+  <button class="tab"        data-env="usuarios"  onclick="switchTab('usuarios')" id="tab-usuarios" style="display:none">&#9671; Usuários do Sistema</button>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ TAB: MONITOR 8380 -->
+<div class="tab-content active" id="tab-monitor">
+
+  <div class="sec">
+    <div class="sec-icon ci ci-blue">&#9000;</div>
+    <span class="sec-label">Sistema</span>
+    <div class="sec-line"></div>
+  </div>
+
+  <div class="grid-3">
+    <div class="card">
+      <h2><span class="ci ci-blue">&#128187;</span> CPU</h2>
+      <div class="gauge-row">
+        <div class="gauge-label">Uso</div>
+        <div class="gauge-bar"><div class="gauge-fill ok" id="cpu-bar" style="width:0%"></div></div>
+        <div class="gauge-val" id="cpu-val">--</div>
+      </div>
+      <div class="stat-grid" style="margin-top:10px">
+        <div class="stat"><div class="val" id="load1">--</div><div class="lbl">Load 1min</div></div>
+        <div class="stat"><div class="val" id="load5">--</div><div class="lbl">Load 5min</div></div>
+        <div class="stat"><div class="val" id="load15">--</div><div class="lbl">Load 15min</div></div>
+        <div class="stat"><div class="val" id="cpu-cores">--</div><div class="lbl">Núcleos</div></div>
+      </div>
+      <canvas id="cpuChart" style="margin-top:12px"></canvas>
+    </div>
+
+    <div class="card">
+      <h2><span class="ci ci-blue">&#129504;</span> Memória &amp; Swap</h2>
+      <div class="gauge-row">
+        <div class="gauge-label">RAM</div>
+        <div class="gauge-bar"><div class="gauge-fill ok" id="mem-bar" style="width:0%"></div></div>
+        <div class="gauge-val" id="mem-val">--</div>
+      </div>
+      <div class="gauge-row">
+        <div class="gauge-label">Swap</div>
+        <div class="gauge-bar"><div class="gauge-fill ok" id="swap-bar" style="width:0%"></div></div>
+        <div class="gauge-val" id="swap-val">--</div>
+      </div>
+      <div class="stat-grid" style="margin-top:10px">
+        <div class="stat"><div class="val" id="mem-used">--</div><div class="lbl">RAM Usada GB</div></div>
+        <div class="stat"><div class="val" id="mem-total">--</div><div class="lbl">RAM Total GB</div></div>
+        <div class="stat"><div class="val" id="swap-used">--</div><div class="lbl">Swap Usada GB</div></div>
+        <div class="stat"><div class="val" id="swap-total">--</div><div class="lbl">Swap Total GB</div></div>
+      </div>
+      <canvas id="memChart" style="margin-top:12px"></canvas>
+    </div>
+
+    <div class="card">
+      <h2><span class="ci ci-amber">&#128190;</span> Disco</h2>
+      <div id="disk-bars"></div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-icon ci ci-amber">&#128196;</div>
+    <span class="sec-label">Backup &amp; Usuários</span>
+    <div class="sec-line"></div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <h2><span class="ci ci-amber">&#128190;</span> Backup Online 8380 <span id="bkp-badge" class="badge idle">--</span></h2>
+      <div class="stat-grid" style="grid-template-columns:repeat(3,1fr)">
+        <div class="stat">
+          <div class="val" id="bkp-mount" style="font-size:14px">--</div>
+          <div class="lbl">Compartilhamento</div>
+        </div>
+        <div class="stat">
+          <div class="val" id="bkp-date" style="font-size:14px">--</div>
+          <div class="lbl">Último backup</div>
+        </div>
+        <div class="stat">
+          <div class="val" id="bkp-result" style="font-size:13px">--</div>
+          <div class="lbl">Resultado</div>
+        </div>
+      </div>
+      <div id="bkp-bancos" style="display:flex;flex-wrap:wrap;gap:5px;margin-top:10px"></div>
+      <div class="bkp-log" id="bkp-log"></div>
+    </div>
+
+    <div class="card">
+      <h2><span class="ci ci-blue">&#128101;</span> Usuários Conectados <span class="counter-badge" id="user-count">0</span></h2>
+      <div class="table-wrap" style="max-height:260px;overflow-y:auto">
+        <table style="margin:0">
+          <thead>
+            <tr><th>Usuário</th><th>Tipo</th><th>Workstation</th><th>Login</th><th>Bancos</th><th>Ação</th></tr>
+          </thead>
+          <tbody id="user-table"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec" style="margin-top:22px">
+    <div class="sec-icon ci ci-green">&#128452;</div>
+    <span class="sec-label">Bancos de Dados Progress</span>
+    <div class="sec-line"></div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <h2><span class="ci ci-green">&#128452;</span> Bancos Progress <small style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted)">(Conexões TCP)</small></h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Banco</th><th>Porta</th><th>Conexões</th><th>Status</th></tr></thead>
+        <tbody id="db-table"></tbody>
+      </table></div>
+    </div>
+
+    <div class="card">
+      <h2><span class="ci ci-green">&#9881;</span> Processos proserve</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>PID(s)</th><th>CPU%</th><th>MEM%</th><th>Banco</th><th>Procs</th></tr></thead>
+        <tbody id="proc-table"></tbody>
+      </table></div>
+    </div>
+
+    <div class="card" style="grid-column: span 2">
+      <h2><span class="ci ci-blue">&#128202;</span> Recursos por Banco Progress</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Banco</th><th>CPU%</th><th>Memória</th><th>I/O Leitura</th><th>I/O Escrita</th><th>Tamanho .db</th><th>Status</th></tr></thead>
+        <tbody id="dbres-table"><tr><td colspan="7" style="color:var(--muted)">Carregando...</td></tr></tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <div class="actions-bar" id="actions-8380">
+    <span class="actions-label">Ações 8380</span>
+    <button class="btn-action bkp admin-only"     onclick="bancoAction('8380','bkp')">&#128190; Executa BKP Online</button>
+    <button class="btn-action derruba admin-only"  onclick="bancoAction('8380','derruba')">&#9209; Derruba Base</button>
+    <button class="btn-action inicia admin-only"   onclick="bancoAction('8380','inicia')">&#9654; Inicia Base</button>
+    <span id="action-status-8380" style="font-size:11px;color:var(--muted)"></span>
+  </div>
+  <div class="ts-line" id="ts">&#128336; Última atualização: --</div>
+</div><!-- /tab-monitor -->
+
+<!-- ══════════════════════════════════════════════════════ TAB: HML 8480 -->
+<div class="tab-content" id="tab-hml8480">
+
+  <div class="sec">
+    <div class="sec-icon ci ci-amber">&#9000;</div>
+    <span class="sec-label">Sistema HML 8480</span>
+    <div class="sec-line"></div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h2><span class="ci ci-blue">&#128187;</span> CPU</h2>
+      <div class="gauge-row">
+        <div class="gauge-label">Uso</div>
+        <div class="gauge-bar"><div class="gauge-fill ok" id="cpu-bar-8480" style="width:0%"></div></div>
+        <div class="gauge-val" id="cpu-val-8480">--</div>
+      </div>
+      <div class="stat-grid" style="margin-top:10px">
+        <div class="stat"><div class="val" id="load1-8480">--</div><div class="lbl">Load 1min</div></div>
+        <div class="stat"><div class="val" id="load5-8480">--</div><div class="lbl">Load 5min</div></div>
+        <div class="stat"><div class="val" id="load15-8480">--</div><div class="lbl">Load 15min</div></div>
+        <div class="stat"><div class="val" id="cpu-cores-8480">--</div><div class="lbl">Núcleos</div></div>
+      </div>
+      <canvas id="cpuChart8480" style="margin-top:12px"></canvas>
+    </div>
+
+    <div class="card">
+      <h2><span class="ci ci-blue">&#129504;</span> Memória &amp; Swap</h2>
+      <div class="gauge-row">
+        <div class="gauge-label">RAM</div>
+        <div class="gauge-bar"><div class="gauge-fill ok" id="mem-bar-8480" style="width:0%"></div></div>
+        <div class="gauge-val" id="mem-val-8480">--</div>
+      </div>
+      <div class="gauge-row">
+        <div class="gauge-label">Swap</div>
+        <div class="gauge-bar"><div class="gauge-fill ok" id="swap-bar-8480" style="width:0%"></div></div>
+        <div class="gauge-val" id="swap-val-8480">--</div>
+      </div>
+      <div class="stat-grid" style="margin-top:10px">
+        <div class="stat"><div class="val" id="mem-used-8480">--</div><div class="lbl">RAM Usada GB</div></div>
+        <div class="stat"><div class="val" id="mem-total-8480">--</div><div class="lbl">RAM Total GB</div></div>
+        <div class="stat"><div class="val" id="swap-used-8480">--</div><div class="lbl">Swap Usada GB</div></div>
+        <div class="stat"><div class="val" id="swap-total-8480">--</div><div class="lbl">Swap Total GB</div></div>
+      </div>
+      <canvas id="memChart8480" style="margin-top:12px"></canvas>
+    </div>
+
+    <div class="card">
+      <h2><span class="ci ci-amber">&#128190;</span> Disco</h2>
+      <div id="disk-bars-8480"></div>
+    </div>
+
+    <div class="card">
+      <h2><span class="ci ci-amber">&#128190;</span> Backup Online <span id="bkp-badge-8480" class="badge idle">--</span></h2>
+      <div class="stat-grid">
+        <div class="stat"><div class="val" id="bkp-mount-8480" style="font-size:14px">--</div><div class="lbl">Compartilhamento</div></div>
+        <div class="stat"><div class="val" id="bkp-date-8480"  style="font-size:14px">--</div><div class="lbl">Último backup</div></div>
+        <div class="stat" style="grid-column:span 2"><div class="val" id="bkp-result-8480" style="font-size:13px">--</div><div class="lbl">Resultado</div></div>
+      </div>
+      <div id="bkp-bancos-8480" style="display:flex;flex-wrap:wrap;gap:5px;margin-top:10px"></div>
+      <div class="bkp-log" id="bkp-log-8480"></div>
+    </div>
+
+    <div class="card" style="grid-column: span 2">
+      <h2><span class="ci ci-blue">&#128101;</span> Usuários Conectados <span class="counter-badge" id="user-count-8480">0</span></h2>
+      <div class="table-wrap" style="max-height:240px;overflow-y:auto">
+        <table style="margin:0">
+          <thead><tr><th>Usuário</th><th>Tipo</th><th>Workstation</th><th>Login</th><th>Bancos</th><th>Ação</th></tr></thead>
+          <tbody id="user-table-8480"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card" style="grid-column: span 2">
+      <h2><span class="ci ci-green">&#128452;</span> Bancos Progress HML 8480</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Banco</th><th>Porta</th><th>Conexões</th><th>Status</th></tr></thead>
+        <tbody id="db-table-8480"></tbody>
+      </table></div>
+    </div>
+
+    <div class="card" style="grid-column: span 2">
+      <h2><span class="ci ci-green">&#9881;</span> Processos Progress HML 8480</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>PID(s)</th><th>CPU%</th><th>MEM%</th><th>Banco</th><th>Procs</th></tr></thead>
+        <tbody id="proc-table-8480"></tbody>
+      </table></div>
+    </div>
+
+    <div class="card" style="grid-column: span 2">
+      <h2><span class="ci ci-blue">&#128202;</span> Recursos por Banco HML 8480</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Banco</th><th>CPU%</th><th>Memória</th><th>I/O Leitura</th><th>I/O Escrita</th><th>Tamanho .db</th><th>Status</th></tr></thead>
+        <tbody id="dbres-table-8480"><tr><td colspan="7" style="color:var(--muted)">Carregando...</td></tr></tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <div class="actions-bar">
+    <span class="actions-label">Ações 8480</span>
+    <button class="btn-action bkp admin-only"      onclick="bancoAction('8480','bkp')">&#128190; Executa BKP Online</button>
+    <button class="btn-action derruba admin-only"  onclick="bancoAction('8480','derruba')">&#9209; Derruba Base</button>
+    <button class="btn-action inicia admin-only"   onclick="bancoAction('8480','inicia')">&#9654; Inicia Base</button>
+    <button class="btn-action atualiza admin-only" onclick="bancoAction('8480','atualiza')">&#128260; Atualiza (prod&#8594;hml)</button>
+    <span id="action-status-8480" style="font-size:11px;color:var(--muted)"></span>
+  </div>
+  <div class="ts-line" id="ts-8480">&#128336; Última atualização: --</div>
+</div><!-- /tab-hml8480 -->
+
+<!-- ══════════════════════════════════════════════════════ TAB: HML 8580 -->
+<div class="tab-content" id="tab-hml8580">
+
+  <div class="sec">
+    <div class="sec-icon ci ci-violet">&#9000;</div>
+    <span class="sec-label">Sistema HML 8580</span>
+    <div class="sec-line"></div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h2><span class="ci ci-blue">&#128187;</span> CPU</h2>
+      <div class="gauge-row">
+        <div class="gauge-label">Uso</div>
+        <div class="gauge-bar"><div class="gauge-fill ok" id="cpu-bar-8580" style="width:0%"></div></div>
+        <div class="gauge-val" id="cpu-val-8580">--</div>
+      </div>
+      <div class="stat-grid" style="margin-top:10px">
+        <div class="stat"><div class="val" id="load1-8580">--</div><div class="lbl">Load 1min</div></div>
+        <div class="stat"><div class="val" id="load5-8580">--</div><div class="lbl">Load 5min</div></div>
+        <div class="stat"><div class="val" id="load15-8580">--</div><div class="lbl">Load 15min</div></div>
+        <div class="stat"><div class="val" id="cpu-cores-8580">--</div><div class="lbl">Núcleos</div></div>
+      </div>
+      <canvas id="cpuChart8580" style="margin-top:12px"></canvas>
+    </div>
+
+    <div class="card">
+      <h2><span class="ci ci-blue">&#129504;</span> Memória &amp; Swap</h2>
+      <div class="gauge-row">
+        <div class="gauge-label">RAM</div>
+        <div class="gauge-bar"><div class="gauge-fill ok" id="mem-bar-8580" style="width:0%"></div></div>
+        <div class="gauge-val" id="mem-val-8580">--</div>
+      </div>
+      <div class="gauge-row">
+        <div class="gauge-label">Swap</div>
+        <div class="gauge-bar"><div class="gauge-fill ok" id="swap-bar-8580" style="width:0%"></div></div>
+        <div class="gauge-val" id="swap-val-8580">--</div>
+      </div>
+      <div class="stat-grid" style="margin-top:10px">
+        <div class="stat"><div class="val" id="mem-used-8580">--</div><div class="lbl">RAM Usada GB</div></div>
+        <div class="stat"><div class="val" id="mem-total-8580">--</div><div class="lbl">RAM Total GB</div></div>
+        <div class="stat"><div class="val" id="swap-used-8580">--</div><div class="lbl">Swap Usada GB</div></div>
+        <div class="stat"><div class="val" id="swap-total-8580">--</div><div class="lbl">Swap Total GB</div></div>
+      </div>
+      <canvas id="memChart8580" style="margin-top:12px"></canvas>
+    </div>
+
+    <div class="card">
+      <h2><span class="ci ci-amber">&#128190;</span> Disco</h2>
+      <div id="disk-bars-8580"></div>
+    </div>
+
+    <div class="card">
+      <h2><span class="ci ci-amber">&#128190;</span> Backup Online <span id="bkp-badge-8580" class="badge idle">--</span></h2>
+      <div class="stat-grid">
+        <div class="stat"><div class="val" id="bkp-mount-8580" style="font-size:14px">--</div><div class="lbl">Compartilhamento</div></div>
+        <div class="stat"><div class="val" id="bkp-date-8580"  style="font-size:14px">--</div><div class="lbl">Último backup</div></div>
+        <div class="stat" style="grid-column:span 2"><div class="val" id="bkp-result-8580" style="font-size:13px">--</div><div class="lbl">Resultado</div></div>
+      </div>
+      <div id="bkp-bancos-8580" style="display:flex;flex-wrap:wrap;gap:5px;margin-top:10px"></div>
+      <div class="bkp-log" id="bkp-log-8580"></div>
+    </div>
+
+    <div class="card" style="grid-column: span 2">
+      <h2><span class="ci ci-blue">&#128101;</span> Usuários Conectados <span class="counter-badge" id="user-count-8580">0</span></h2>
+      <div class="table-wrap" style="max-height:240px;overflow-y:auto">
+        <table style="margin:0">
+          <thead><tr><th>Usuário</th><th>Tipo</th><th>Workstation</th><th>Login</th><th>Bancos</th><th>Ação</th></tr></thead>
+          <tbody id="user-table-8580"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card" style="grid-column: span 2">
+      <h2><span class="ci ci-green">&#128452;</span> Bancos Progress HML 8580</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Banco</th><th>Porta</th><th>Conexões</th><th>Status</th></tr></thead>
+        <tbody id="db-table-8580"></tbody>
+      </table></div>
+    </div>
+
+    <div class="card" style="grid-column: span 2">
+      <h2><span class="ci ci-green">&#9881;</span> Processos Progress HML 8580</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>PID(s)</th><th>CPU%</th><th>MEM%</th><th>Banco</th><th>Procs</th></tr></thead>
+        <tbody id="proc-table-8580"></tbody>
+      </table></div>
+    </div>
+
+    <div class="card" style="grid-column: span 2">
+      <h2><span class="ci ci-blue">&#128202;</span> Recursos por Banco HML 8580</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Banco</th><th>CPU%</th><th>Memória</th><th>I/O Leitura</th><th>I/O Escrita</th><th>Tamanho .db</th><th>Status</th></tr></thead>
+        <tbody id="dbres-table-8580"><tr><td colspan="7" style="color:var(--muted)">Carregando...</td></tr></tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <div class="actions-bar" id="actions-8580">
+    <span class="actions-label">Ações 8580</span>
+    <button class="btn-action bkp admin-only"      onclick="bancoAction('8580','bkp')">&#128190; Executa BKP Online</button>
+    <button class="btn-action derruba admin-only"  onclick="bancoAction('8580','derruba')">&#9209; Derruba Base</button>
+    <button class="btn-action inicia admin-only"   onclick="bancoAction('8580','inicia')">&#9654; Inicia Base</button>
+    <button class="btn-action atualiza admin-only" onclick="bancoAction('8580','atualiza')">&#128260; Atualiza (prod&#8594;hml)</button>
+    <span id="action-status-8580" style="font-size:11px;color:var(--muted)"></span>
+  </div>
+  <div class="ts-line" id="ts-8580">&#128336; Última atualização: --</div>
+</div><!-- /tab-hml8580 -->
+
+<!-- ══════════════════════════════════════════════════════ TAB: USUÁRIOS -->
+<div class="tab-content" id="tab-usuarios-content">
+  <div class="card" style="max-width:900px">
+    <h2 style="justify-content:space-between">
+      <span><span class="ci ci-blue" style="display:inline-flex;margin-right:8px">&#128101;</span> Usuários do Sistema</span>
+      <button class="btn-primary btn-sm" style="padding:5px 14px;font-size:11px" onclick="abrirModal()">+ Novo Usuário</button>
+    </h2>
+    <div class="table-wrap"><table id="tbl-usuarios">
+      <thead><tr><th>Login</th><th>Nome</th><th>Perfil</th><th>Status</th><th>Criado em</th><th>Ações</th></tr></thead>
+      <tbody id="tbody-usuarios"></tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- MODAL CADASTRO/EDIÇÃO -->
+<div class="modal-bg" id="modal-bg">
+  <div class="modal">
+    <h3 id="modal-titulo">Novo Usuário</h3>
+    <input type="hidden" id="modal-id">
+    <label>Login</label>
+    <input id="modal-login" type="text" placeholder="ex: joao.silva">
+    <label>Nome completo</label>
+    <input id="modal-nome" type="text" placeholder="ex: João Silva">
+    <label>Senha <span id="senha-hint" style="color:var(--muted);font-size:10px;text-transform:none;letter-spacing:0">(em branco = não alterar)</span></label>
+    <input id="modal-senha" type="password" placeholder="••••••••">
+    <label>Perfil</label>
+    <select id="modal-perfil">
+      <option value="viewer">Viewer — somente visualização</option>
+      <option value="admin">Admin — acesso total</option>
+    </select>
+    <label>Status</label>
+    <select id="modal-ativo">
+      <option value="1">Ativo</option>
+      <option value="0">Inativo</option>
+    </select>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="fecharModal()">Cancelar</button>
+      <button class="btn-primary" onclick="salvarUsuario()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- MODAL LOG DE AÇÃO -->
+<div class="modal-bg" id="job-modal-bg">
+  <div class="modal" style="max-width:640px">
+    <h3 id="job-modal-titulo">Executando...</h3>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+      <span id="job-modal-badge" class="badge running">EM EXECUÇÃO</span>
+      <span id="job-modal-started" style="font-size:11px;color:var(--muted)"></span>
+    </div>
+    <div class="job-log" id="job-modal-log"></div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="fecharJobModal()">Fechar</button>
+    </div>
+  </div>
+</div>
+
+</div><!-- /main -->
+
+<script>
+const MAX_POINTS = 30;
+
+function mkChart(id, label, color) {
+  return new Chart(document.getElementById(id).getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: Array(MAX_POINTS).fill(''),
+      datasets: [{ label, data: Array(MAX_POINTS).fill(null), borderColor: color,
+        backgroundColor: color+'22', borderWidth: 1.5, fill: true, tension: 0.3, pointRadius: 0 }]
+    },
+    options: {
+      animation: false, responsive: true, maintainAspectRatio: false,
+      scales: {
+        x: { display: false },
+        y: { min: 0, max: 100, ticks: { color: '#64748b', font: { size: 10 } }, grid: { color: '#1e2d45' } }
+      },
+      plugins: { legend: { display: false } }
+    }
+  });
+}
+
+const cpuChart = mkChart('cpuChart', 'CPU %', '#3b82f6');
+const memChart = mkChart('memChart', 'RAM %', '#22c55e');
+
+function push(chart, val) {
+  chart.data.datasets[0].data.push(val);
+  chart.data.datasets[0].data.shift();
+  chart.update('none');
+}
+
+function colorClass(pct) { return pct >= 90 ? 'crit' : pct >= 75 ? 'warn' : 'ok'; }
+
+function setGauge(barId, valId, pct, label) {
+  const bar = document.getElementById(barId);
+  bar.style.width = pct + '%';
+  bar.className = 'gauge-fill ' + colorClass(pct);
+  document.getElementById(valId).textContent = label || pct + '%';
+}
+
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast ' + type;
+  requestAnimationFrame(() => { t.classList.add('show'); });
+  setTimeout(() => { t.className = 'toast'; }, 3500);
+}
+
+async function kickUser(usuario) {
+  if (!confirm(`Derrubar usuário "${usuario}" de TODOS os bancos?`)) return;
+  try {
+    const r = await fetch('/api/kick-user', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({usuario}) });
+    const d = await r.json();
+    showToast(d.msg, d.ok ? 'success' : 'error');
+    refreshUsers();
+  } catch(e) { showToast('Erro ao derrubar usuário', 'error'); }
+}
+
+async function refreshUsers() {
+  try {
+    const r = await fetch('/api/users');
+    const d = await r.json();
+    const tbody = document.getElementById('user-table');
+    if (d.users.length === 0) {
+      document.getElementById('user-count').textContent = '0';
+      tbody.innerHTML = '<tr><td colspan="6" style="color:var(--muted)">Nenhum usuário conectado</td></tr>';
+      return;
+    }
+    const grouped = {};
+    for (const u of d.users) {
+      const key = u.usuario === '--' ? `__pasoe__${u.pid}` : u.usuario;
+      if (!grouped[key]) grouped[key] = { usuario: u.usuario, tipo: u.tipo, workstation: u.workstation, hora: u.hora, bancos: [] };
+      grouped[key].bancos.push(u.db);
+    }
+    const rows = Object.values(grouped).sort((a,b) => {
+      if (a.usuario === '--' && b.usuario !== '--') return 1;
+      if (a.usuario !== '--' && b.usuario === '--') return -1;
+      return a.usuario.localeCompare(b.usuario);
+    });
+    document.getElementById('user-count').textContent = rows.filter(r => r.usuario !== '--').length + ' / ' + d.total + ' sessões';
+    tbody.innerHTML = rows.map(r =>
+      `<tr>
+        <td><b style="color:${r.usuario!='--'?'var(--blue)':'var(--muted)'}">${r.usuario === '--' ? 'PASOE/Broker' : r.usuario}</b></td>
+        <td><span style="font-size:10px;color:var(--muted)">${r.tipo||'--'}</span></td>
+        <td>${r.workstation}</td>
+        <td style="font-size:10px;color:var(--muted)">${r.hora}</td>
+        <td style="font-size:10px">${r.bancos.join(', ')}</td>
+        <td>${r.usuario !== '--' ? `<button class="btn-kick" onclick="kickUser('${r.usuario}')">Derrubar</button>` : ''}</td>
+      </tr>`
+    ).join('');
+  } catch(e) {}
+}
+
+async function refreshBackup() {
+  try {
+    const r = await fetch('/api/backup-status');
+    const d = await r.json();
+    const badge = document.getElementById('bkp-badge');
+    if (d.running) { badge.textContent = 'EM EXECUÇÃO'; badge.className = 'badge running'; }
+    else if (d.last_result && d.last_result.startsWith('OK'))   { badge.textContent = 'OK';   badge.className = 'badge ok-bkp'; }
+    else if (d.last_result && d.last_result.startsWith('ERRO')) { badge.textContent = 'ERRO'; badge.className = 'badge err'; }
+    else { badge.textContent = 'IDLE'; badge.className = 'badge idle'; }
+    document.getElementById('bkp-mount').textContent  = d.mount_ok ? '✓ Montado' : '✗ Offline';
+    document.getElementById('bkp-mount').style.color  = d.mount_ok ? 'var(--green)' : 'var(--red)';
+    document.getElementById('bkp-date').textContent   = d.last_log_date || '--';
+    document.getElementById('bkp-result').textContent = d.last_result || '--';
+    const bancosDiv = document.getElementById('bkp-bancos');
+    if (d.banco_status && Object.keys(d.banco_status).length) {
+      bancosDiv.innerHTML = Object.entries(d.banco_status).map(([b, s]) => {
+        const ok = s === 'OK';
+        return `<span style="font-size:11px;padding:3px 9px;border-radius:20px;font-weight:700;
+          background:${ok?'rgba(34,197,94,.12)':'rgba(239,68,68,.12)'};
+          color:${ok?'var(--green)':'var(--red)'};
+          border:1px solid ${ok?'rgba(34,197,94,.25)':'rgba(239,68,68,.25)'}">${b} ${ok?'✓':'✗'}</span>`;
+      }).join('');
+    }
+    const logDiv = document.getElementById('bkp-log');
+    if (d.last_log_lines.length) {
+      logDiv.innerHTML = d.last_log_lines.map(l => {
+        let cls = 'log-info';
+        if (l.startsWith('OK:')) cls = 'log-ok';
+        else if (l.includes('ERRO')) cls = 'log-err';
+        else if (l.includes('===')) cls = 'log-ok';
+        return `<div class="${cls}">${l}</div>`;
+      }).join('');
+      logDiv.scrollTop = logDiv.scrollHeight;
+    }
+  } catch(e) {}
+}
+
+async function refresh() {
+  try {
+    const r = await fetch('/api/metrics');
+    if (!r.ok) throw new Error();
+    const d = await r.json();
+
+    const statusEl = document.getElementById('status');
+    statusEl.textContent = 'ONLINE'; statusEl.className = '';
+
+    setGauge('cpu-bar','cpu-val', d.cpu.percent, d.cpu.percent+'%');
+    push(cpuChart, d.cpu.percent);
+    document.getElementById('load1').textContent = d.load_avg[0].toFixed(2);
+    document.getElementById('load5').textContent = d.load_avg[1].toFixed(2);
+    document.getElementById('load15').textContent = d.load_avg[2].toFixed(2);
+    document.getElementById('cpu-cores').textContent = d.cpu.count;
+
+    setGauge('mem-bar','mem-val', d.memory.percent, d.memory.percent+'%');
+    setGauge('swap-bar','swap-val', d.swap.percent, d.swap.percent+'%');
+    push(memChart, d.memory.percent);
+    document.getElementById('mem-used').textContent  = d.memory.used_gb;
+    document.getElementById('mem-total').textContent = d.memory.total_gb;
+    document.getElementById('swap-used').textContent  = d.swap.used_gb;
+    document.getElementById('swap-total').textContent = d.swap.total_gb;
+
+    document.getElementById('disk-bars').innerHTML = d.disk.map(dk =>
+      `<div class="gauge-row">
+        <div class="gauge-label" title="${dk.mount}">${dk.mount.length>8?dk.mount.slice(-8):dk.mount}</div>
+        <div class="gauge-bar"><div class="gauge-fill ${colorClass(dk.percent)}" style="width:${dk.percent}%"></div></div>
+        <div class="gauge-val" style="color:${dk.percent>=90?'var(--red)':dk.percent>=75?'var(--amber)':'var(--green)'}">${dk.percent}%</div>
+      </div>
+      <div style="font-size:10px;color:var(--muted);margin-bottom:6px;padding-left:68px">${dk.used_gb}GB / ${dk.total_gb}GB</div>`
+    ).join('');
+
+    const dbTbody = document.getElementById('db-table');
+    dbTbody.innerHTML = '';
+    for (const [name, conns] of Object.entries(d.db_connections).sort()) {
+      const port = {ems2adt:23600,ems2cad:23601,ems2mov:23602,ems2mp:23603,ems5cad:23606,
+                    ems5mov:23607,hcm:23608,emsfnd:23619,eai:23621,dtviewer:23650,emsdes:23635,emsinc:23009}[name]||'--';
+      dbTbody.innerHTML += `<tr><td><b>${name}</b></td><td style="color:var(--muted)">${port}</td><td>${conns}</td>
+        <td><span class="badge ${conns>0?'up':'idle'}">${conns>0?'ATIVO':'IDLE'}</span></td></tr>`;
+    }
+
+    const procTbody = document.getElementById('proc-table');
+    if (!d.progress_processes.length) {
+      procTbody.innerHTML = '<tr><td colspan="5" style="color:var(--muted)">Nenhum processo proserve encontrado</td></tr>';
+    } else {
+      const byBanco = {};
+      for (const p of d.progress_processes) {
+        const b = p.banco || '(broker)';
+        if (!byBanco[b]) byBanco[b] = [];
+        byBanco[b].push(p);
+      }
+      procTbody.innerHTML = Object.entries(byBanco).sort().map(([banco, procs]) => {
+        const cpuTotal = procs.reduce((s,p)=>s+parseFloat(p.cpu||0),0).toFixed(1);
+        const memTotal = procs.reduce((s,p)=>s+parseFloat(p.mem||0),0).toFixed(1);
+        return `<tr>
+          <td style="font-size:10px;color:var(--muted)">${procs.map(p=>p.pid).join(', ')}</td>
+          <td>${cpuTotal}%</td><td>${memTotal}%</td>
+          <td><b>${banco}</b></td>
+          <td style="color:var(--muted)">${procs.length}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    document.getElementById('ts').textContent = '🕐 Última atualização: ' + new Date().toLocaleTimeString('pt-BR');
+  } catch(e) {
+    const statusEl = document.getElementById('status');
+    statusEl.textContent = 'OFFLINE'; statusEl.className = 'offline';
+  }
+}
+
+async function refreshDbResources() {
+  try {
+    const r = await fetch('/api/db-resources', {credentials:'include'});
+    const d = await r.json();
+    const tbody = document.getElementById('dbres-table');
+    const rows = Object.entries(d).sort().map(([banco, v]) => {
+      const cpuBar  = v.cpu > 0 ? `<span style="color:var(--blue)">${v.cpu}%</span>` : `<span style="color:var(--muted)">0%</span>`;
+      const memColor = v.mem_mb > 500 ? 'var(--red)' : v.mem_mb > 200 ? 'var(--amber)' : 'var(--green)';
+      const sizeGB  = v.size_mb >= 1024 ? (v.size_mb/1024).toFixed(1)+'GB' : v.size_mb.toFixed(0)+'MB';
+      const ioR     = v.io_read_mb  >= 1024 ? (v.io_read_mb/1024).toFixed(1)+'GB'  : v.io_read_mb.toFixed(0)+'MB';
+      const ioW     = v.io_write_mb >= 1024 ? (v.io_write_mb/1024).toFixed(1)+'GB' : v.io_write_mb.toFixed(0)+'MB';
+      const status  = v.pids.length > 0 ? '<span class="badge up">UP</span>' : '<span class="badge idle">PARADO</span>';
+      return `<tr>
+        <td><b>${banco}</b></td><td>${cpuBar}</td>
+        <td style="color:${memColor}">${v.mem_mb.toFixed(0)} MB</td>
+        <td style="color:var(--muted)">${ioR}</td><td style="color:var(--muted)">${ioW}</td>
+        <td>${sizeGB}</td><td>${status}</td>
+      </tr>`;
+    });
+    tbody.innerHTML = rows.join('');
+  } catch(e) {}
+}
+
+// ── ações banco ──────────────────────────────────────────────────────────────
+const ACTION_LABELS = {
+  '8380_bkp':     'Backup Online 8380 em execução...',
+  '8380_derruba': 'Derrubando Base 8380',
+  '8380_inicia':  'Iniciando Base 8380',
+  '8480_derruba': 'Derrubando Base 8480',
+  '8480_inicia':  'Iniciando Base 8480',
+  '8480_atualiza':'Atualizando Base HML 8480 (prod→8480)',
+  '8580_derruba': 'Derrubando Base 8580',
+  '8580_inicia':  'Iniciando Base 8580',
+  '8580_atualiza':'Atualizando Base HML 8580 (prod→8580)',
+};
+const ACTION_CONFIRMS = {
+  '8380_bkp':     'Confirma executar BACKUP ONLINE da 8380 agora?\n\nOs bancos continuam ativos durante o backup.',
+  '8380_derruba': 'Confirma DERRUBAR todos os bancos da 8380 (PRODUÇÃO)?',
+  '8380_inicia':  'Confirma INICIAR todos os bancos da 8380 (PRODUÇÃO)?',
+  '8480_derruba': 'Confirma DERRUBAR todos os bancos da 8480 (HML)?',
+  '8480_inicia':  'Confirma INICIAR todos os bancos da 8480 (HML)?',
+  '8480_atualiza':'Confirma ATUALIZAR a base HML 8480 com o backup de produção?\n\nOs bancos 8480 serão DERRUBADOS, restaurados e reiniciados.',
+  '8580_derruba': 'Confirma DERRUBAR todos os bancos da 8580 (HML)?',
+  '8580_inicia':  'Confirma INICIAR todos os bancos da 8580 (HML)?',
+  '8580_atualiza':'Confirma ATUALIZAR a base HML 8580 com o backup de produção?\n\nOs bancos 8580 serão DERRUBADOS, restaurados e reiniciados.',
+};
+
+let _jobPollTimer = null;
+
+function fecharJobModal() {
+  document.getElementById('job-modal-bg').classList.remove('open');
+  if (_jobPollTimer) { clearInterval(_jobPollTimer); _jobPollTimer = null; }
+}
+
+function abrirJobModal(titulo) {
+  document.getElementById('job-modal-titulo').textContent = titulo;
+  document.getElementById('job-modal-badge').textContent = 'EM EXECUÇÃO';
+  document.getElementById('job-modal-badge').className = 'badge running';
+  document.getElementById('job-modal-log').innerHTML = '';
+  document.getElementById('job-modal-started').textContent = '';
+  document.getElementById('job-modal-bg').classList.add('open');
+}
+
+async function pollJob(jobKey, statusEl) {
+  try {
+    const r = await fetch(`/api/banco-job/${jobKey}`, {credentials:'include'});
+    const d = await r.json();
+    const logDiv = document.getElementById('job-modal-log');
+    logDiv.innerHTML = d.log.map(l => {
+      let cls = 'log-info';
+      if (l.startsWith('UP:') || l.startsWith('OK:') || l.startsWith('PARADO:')) cls = 'log-ok';
+      else if (l.startsWith('ERRO:')) cls = 'log-err';
+      else if (l.startsWith('===')) cls = 'log-ok';
+      return `<div class="${cls}">${l}</div>`;
+    }).join('');
+    logDiv.scrollTop = logDiv.scrollHeight;
+    if (d.started) document.getElementById('job-modal-started').textContent = 'Iniciado: ' + d.started;
+    const badge = document.getElementById('job-modal-badge');
+    if (d.status === 'running') {
+      badge.textContent = 'EM EXECUÇÃO'; badge.className = 'badge running';
+      if (statusEl) statusEl.textContent = '⏳ executando...';
+    } else if (d.status === 'ok') {
+      badge.textContent = 'CONCLUÍDO'; badge.className = 'badge up';
+      if (statusEl) statusEl.textContent = '✓ concluído';
+      if (_jobPollTimer) { clearInterval(_jobPollTimer); _jobPollTimer = null; }
+    } else if (d.status === 'erro') {
+      badge.textContent = 'ERRO'; badge.className = 'badge err';
+      if (statusEl) statusEl.textContent = '✗ erro';
+      if (_jobPollTimer) { clearInterval(_jobPollTimer); _jobPollTimer = null; }
+    }
+  } catch(e) {}
+}
+
+async function bancoAction(env, action) {
+  const key = `${env}_${action}`;
+  if (!confirm(ACTION_CONFIRMS[key])) return;
+  try {
+    const r = await fetch('/api/banco-action', {
+      method: 'POST', credentials: 'include',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({env, action})
+    });
+    const d = await r.json();
+    if (!d.ok) { showToast(d.msg, 'error'); return; }
+    const statusEl = document.getElementById(`action-status-${env}`);
+    abrirJobModal(ACTION_LABELS[key]);
+    if (_jobPollTimer) clearInterval(_jobPollTimer);
+    _jobPollTimer = setInterval(() => pollJob(d.job, statusEl), 2000);
+    pollJob(d.job, statusEl);
+  } catch(e) { showToast('Erro ao executar ação', 'error'); }
+}
+
+document.getElementById('job-modal-bg').addEventListener('click', e => {
+  if (e.target === document.getElementById('job-modal-bg')) fecharJobModal();
+});
+
+// ── 8480 ──────────────────────────────────────────────────────────────────────
+const cpuChart8480 = mkChart('cpuChart8480', 'CPU %', '#3b82f6');
+const memChart8480 = mkChart('memChart8480', 'RAM %', '#22c55e');
+
+async function kickUser8480(usuario) {
+  if (!confirm(`Derrubar usuário "${usuario}" de TODOS os bancos HML 8480?`)) return;
+  try {
+    const r = await fetch('/api/kick-user-8480', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({usuario})});
+    const d = await r.json();
+    showToast(d.msg, d.ok ? 'success' : 'error');
+    refreshUsers8480();
+  } catch(e) { showToast('Erro ao derrubar usuário','error'); }
+}
+
+async function refreshUsers8480() {
+  try {
+    const r = await fetch('/api/users-8480');
+    const d = await r.json();
+    const tbody = document.getElementById('user-table-8480');
+    if (d.users.length === 0) {
+      document.getElementById('user-count-8480').textContent = '0';
+      tbody.innerHTML = '<tr><td colspan="6" style="color:var(--muted)">Nenhum usuário conectado</td></tr>';
+      return;
+    }
+    const grouped = {};
+    for (const u of d.users) {
+      const key = u.usuario === '--' ? `__pasoe__${u.pid}` : u.usuario;
+      if (!grouped[key]) grouped[key] = {usuario:u.usuario,tipo:u.tipo,workstation:u.workstation,hora:u.hora,bancos:[]};
+      grouped[key].bancos.push(u.db);
+    }
+    const rows = Object.values(grouped).sort((a,b)=>{
+      if(a.usuario==='--'&&b.usuario!=='--') return 1;
+      if(a.usuario!=='--'&&b.usuario==='--') return -1;
+      return a.usuario.localeCompare(b.usuario);
+    });
+    document.getElementById('user-count-8480').textContent = rows.filter(r=>r.usuario!=='--').length+' / '+d.total+' sessões';
+    tbody.innerHTML = rows.map(r=>`<tr>
+      <td><b style="color:${r.usuario!='--'?'var(--blue)':'var(--muted)'}">${r.usuario==='--'?'PASOE/Broker':r.usuario}</b></td>
+      <td><span style="font-size:10px;color:var(--muted)">${r.tipo||'--'}</span></td>
+      <td>${r.workstation}</td>
+      <td style="font-size:10px;color:var(--muted)">${r.hora}</td>
+      <td style="font-size:10px">${r.bancos.join(', ')}</td>
+      <td>${r.usuario!=='--'?`<button class="btn-kick" onclick="kickUser8480('${r.usuario}')">Derrubar</button>`:''}</td>
+    </tr>`).join('');
+  } catch(e) {}
+}
+
+async function refreshBackup8480() {
+  try {
+    const r = await fetch('/api/backup-status-8480');
+    const d = await r.json();
+    const badge = document.getElementById('bkp-badge-8480');
+    if (d.running) { badge.textContent='EM EXECUÇÃO'; badge.className='badge running'; }
+    else if (d.last_result&&d.last_result.startsWith('OK')) { badge.textContent='OK'; badge.className='badge ok-bkp'; }
+    else if (d.last_result&&d.last_result.startsWith('ERRO')) { badge.textContent='ERRO'; badge.className='badge err'; }
+    else { badge.textContent='IDLE'; badge.className='badge idle'; }
+    document.getElementById('bkp-mount-8480').textContent = d.mount_ok ? '✓ Montado' : '✗ Offline';
+    document.getElementById('bkp-mount-8480').style.color = d.mount_ok ? 'var(--green)' : 'var(--red)';
+    document.getElementById('bkp-date-8480').textContent = d.last_log_date||'--';
+    document.getElementById('bkp-result-8480').textContent = d.last_result||'--';
+    const bancosDiv8480 = document.getElementById('bkp-bancos-8480');
+    if (d.banco_status && Object.keys(d.banco_status).length) {
+      bancosDiv8480.innerHTML = Object.entries(d.banco_status).map(([b, s]) => {
+        const ok = s === 'OK';
+        return `<span style="font-size:11px;padding:3px 9px;border-radius:20px;font-weight:700;
+          background:${ok?'rgba(34,197,94,.12)':'rgba(239,68,68,.12)'};
+          color:${ok?'var(--green)':'var(--red)'};
+          border:1px solid ${ok?'rgba(34,197,94,.25)':'rgba(239,68,68,.25)'}">${b} ${ok?'✓':'✗'}</span>`;
+      }).join('');
+    }
+    const logDiv = document.getElementById('bkp-log-8480');
+    if (d.last_log_lines.length) {
+      logDiv.innerHTML = d.last_log_lines.map(l=>{
+        let cls='log-info';
+        if(l.startsWith('OK:')) cls='log-ok';
+        else if(l.includes('ERRO')) cls='log-err';
+        else if(l.includes('===')) cls='log-ok';
+        return `<div class="${cls}">${l}</div>`;
+      }).join('');
+      logDiv.scrollTop = logDiv.scrollHeight;
+    }
+  } catch(e) {}
+}
+
+async function refresh8480() {
+  try {
+    const r = await fetch('/api/metrics-8480');
+    if (!r.ok) throw new Error();
+    const d = await r.json();
+    setGauge('cpu-bar-8480','cpu-val-8480',d.cpu.percent,d.cpu.percent+'%');
+    push(cpuChart8480,d.cpu.percent);
+    document.getElementById('load1-8480').textContent = d.load_avg[0].toFixed(2);
+    document.getElementById('load5-8480').textContent = d.load_avg[1].toFixed(2);
+    document.getElementById('load15-8480').textContent = d.load_avg[2].toFixed(2);
+    document.getElementById('cpu-cores-8480').textContent = d.cpu.count;
+    setGauge('mem-bar-8480','mem-val-8480',d.memory.percent,d.memory.percent+'%');
+    setGauge('swap-bar-8480','swap-val-8480',d.swap.percent,d.swap.percent+'%');
+    push(memChart8480,d.memory.percent);
+    document.getElementById('mem-used-8480').textContent = d.memory.used_gb;
+    document.getElementById('mem-total-8480').textContent = d.memory.total_gb;
+    document.getElementById('swap-used-8480').textContent = d.swap.used_gb;
+    document.getElementById('swap-total-8480').textContent = d.swap.total_gb;
+    document.getElementById('disk-bars-8480').innerHTML = d.disk.map(dk=>
+      `<div class="gauge-row">
+        <div class="gauge-label" title="${dk.mount}">${dk.mount.length>8?dk.mount.slice(-8):dk.mount}</div>
+        <div class="gauge-bar"><div class="gauge-fill ${colorClass(dk.percent)}" style="width:${dk.percent}%"></div></div>
+        <div class="gauge-val" style="color:${dk.percent>=90?'var(--red)':dk.percent>=75?'var(--amber)':'var(--green)'}">${dk.percent}%</div>
+      </div>
+      <div style="font-size:10px;color:var(--muted);margin-bottom:6px;padding-left:68px">${dk.used_gb}GB / ${dk.total_gb}GB</div>`
+    ).join('');
+    const dbTbody = document.getElementById('db-table-8480');
+    dbTbody.innerHTML = '';
+    for (const [name,conns] of Object.entries(d.db_connections).sort()) {
+      const port={ems2adt:24600,ems2cad:24601,ems2mov:24602,ems2mp:24603,ems5cad:24606,
+                  ems5mov:24607,hcm:24608,emsfnd:24619,eai:24621,dtviewer:24650,emsdes:24635,emsinc:24009}[name]||'--';
+      dbTbody.innerHTML += `<tr><td><b>${name}</b></td><td style="color:var(--muted)">${port}</td><td>${conns}</td>
+        <td><span class="badge ${conns>0?'up':'idle'}">${conns>0?'ATIVO':'IDLE'}</span></td></tr>`;
+    }
+    const procTbody = document.getElementById('proc-table-8480');
+    if (!d.progress_processes.length) {
+      procTbody.innerHTML = '<tr><td colspan="5" style="color:var(--muted)">Nenhum processo proserve encontrado</td></tr>';
+    } else {
+      const byBanco={};
+      for (const p of d.progress_processes) { const b=p.banco||'(broker)'; if(!byBanco[b]) byBanco[b]=[]; byBanco[b].push(p); }
+      procTbody.innerHTML = Object.entries(byBanco).sort().map(([banco,procs])=>{
+        const cpuTotal=procs.reduce((s,p)=>s+parseFloat(p.cpu||0),0).toFixed(1);
+        const memTotal=procs.reduce((s,p)=>s+parseFloat(p.mem||0),0).toFixed(1);
+        return `<tr><td style="font-size:10px;color:var(--muted)">${procs.map(p=>p.pid).join(', ')}</td><td>${cpuTotal}%</td><td>${memTotal}%</td><td><b>${banco}</b></td><td style="color:var(--muted)">${procs.length}</td></tr>`;
+      }).join('');
+    }
+    document.getElementById('ts-8480').textContent = '🕐 Última atualização: '+new Date().toLocaleTimeString('pt-BR');
+  } catch(e) {}
+}
+
+async function refreshDbResources8480() {
+  try {
+    const r = await fetch('/api/db-resources-8480',{credentials:'include'});
+    const d = await r.json();
+    document.getElementById('dbres-table-8480').innerHTML = Object.entries(d).sort().map(([banco,v])=>{
+      const cpuBar=v.cpu>0?`<span style="color:var(--blue)">${v.cpu}%</span>`:`<span style="color:var(--muted)">0%</span>`;
+      const memColor=v.mem_mb>500?'var(--red)':v.mem_mb>200?'var(--amber)':'var(--green)';
+      const sizeGB=v.size_mb>=1024?(v.size_mb/1024).toFixed(1)+'GB':v.size_mb.toFixed(0)+'MB';
+      const ioR=v.io_read_mb>=1024?(v.io_read_mb/1024).toFixed(1)+'GB':v.io_read_mb.toFixed(0)+'MB';
+      const ioW=v.io_write_mb>=1024?(v.io_write_mb/1024).toFixed(1)+'GB':v.io_write_mb.toFixed(0)+'MB';
+      const status=v.pids.length>0?'<span class="badge up">UP</span>':'<span class="badge idle">PARADO</span>';
+      return `<tr><td><b>${banco}</b></td><td>${cpuBar}</td><td style="color:${memColor}">${v.mem_mb.toFixed(0)} MB</td><td style="color:var(--muted)">${ioR}</td><td style="color:var(--muted)">${ioW}</td><td>${sizeGB}</td><td>${status}</td></tr>`;
+    }).join('');
+  } catch(e) {}
+}
+
+// ── 8580 ──────────────────────────────────────────────────────────────────────
+const cpuChart8580 = mkChart('cpuChart8580', 'CPU %', '#3b82f6');
+const memChart8580 = mkChart('memChart8580', 'RAM %', '#22c55e');
+
+async function kickUser8580(usuario) {
+  if (!confirm(`Derrubar usuário "${usuario}" de TODOS os bancos HML 8580?`)) return;
+  try {
+    const r = await fetch('/api/kick-user-8580', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({usuario})});
+    const d = await r.json();
+    showToast(d.msg, d.ok ? 'success' : 'error');
+    refreshUsers8580();
+  } catch(e) { showToast('Erro ao derrubar usuário','error'); }
+}
+
+async function refreshUsers8580() {
+  try {
+    const r = await fetch('/api/users-8580');
+    const d = await r.json();
+    const tbody = document.getElementById('user-table-8580');
+    if (d.users.length === 0) {
+      document.getElementById('user-count-8580').textContent = '0';
+      tbody.innerHTML = '<tr><td colspan="6" style="color:var(--muted)">Nenhum usuário conectado</td></tr>';
+      return;
+    }
+    const grouped = {};
+    for (const u of d.users) {
+      const key = u.usuario === '--' ? `__pasoe__${u.pid}` : u.usuario;
+      if (!grouped[key]) grouped[key] = {usuario:u.usuario,tipo:u.tipo,workstation:u.workstation,hora:u.hora,bancos:[]};
+      grouped[key].bancos.push(u.db);
+    }
+    const rows = Object.values(grouped).sort((a,b)=>{
+      if(a.usuario==='--'&&b.usuario!=='--') return 1;
+      if(a.usuario!=='--'&&b.usuario==='--') return -1;
+      return a.usuario.localeCompare(b.usuario);
+    });
+    document.getElementById('user-count-8580').textContent = rows.filter(r=>r.usuario!=='--').length+' / '+d.total+' sessões';
+    tbody.innerHTML = rows.map(r=>`<tr>
+      <td><b style="color:${r.usuario!='--'?'var(--blue)':'var(--muted)'}">${r.usuario==='--'?'PASOE/Broker':r.usuario}</b></td>
+      <td><span style="font-size:10px;color:var(--muted)">${r.tipo||'--'}</span></td>
+      <td>${r.workstation}</td>
+      <td style="font-size:10px;color:var(--muted)">${r.hora}</td>
+      <td style="font-size:10px">${r.bancos.join(', ')}</td>
+      <td>${r.usuario!=='--'?`<button class="btn-kick" onclick="kickUser8580('${r.usuario}')">Derrubar</button>`:''}</td>
+    </tr>`).join('');
+  } catch(e) {}
+}
+
+async function refreshBackup8580() {
+  try {
+    const r = await fetch('/api/backup-status-8580');
+    const d = await r.json();
+    const badge = document.getElementById('bkp-badge-8580');
+    if (d.running) { badge.textContent='EM EXECUÇÃO'; badge.className='badge running'; }
+    else if (d.last_result&&d.last_result.startsWith('OK')) { badge.textContent='OK'; badge.className='badge ok-bkp'; }
+    else if (d.last_result&&d.last_result.startsWith('ERRO')) { badge.textContent='ERRO'; badge.className='badge err'; }
+    else { badge.textContent='IDLE'; badge.className='badge idle'; }
+    document.getElementById('bkp-mount-8580').textContent = d.mount_ok ? '✓ Montado' : '✗ Offline';
+    document.getElementById('bkp-mount-8580').style.color = d.mount_ok ? 'var(--green)' : 'var(--red)';
+    document.getElementById('bkp-date-8580').textContent = d.last_log_date||'--';
+    document.getElementById('bkp-result-8580').textContent = d.last_result||'--';
+    const bancosDiv8580 = document.getElementById('bkp-bancos-8580');
+    if (d.banco_status && Object.keys(d.banco_status).length) {
+      bancosDiv8580.innerHTML = Object.entries(d.banco_status).map(([b, s]) => {
+        const ok = s === 'OK';
+        return `<span style="font-size:11px;padding:3px 9px;border-radius:20px;font-weight:700;
+          background:${ok?'rgba(34,197,94,.12)':'rgba(239,68,68,.12)'};
+          color:${ok?'var(--green)':'var(--red)'};
+          border:1px solid ${ok?'rgba(34,197,94,.25)':'rgba(239,68,68,.25)'}">${b} ${ok?'✓':'✗'}</span>`;
+      }).join('');
+    }
+    const logDiv = document.getElementById('bkp-log-8580');
+    if (d.last_log_lines.length) {
+      logDiv.innerHTML = d.last_log_lines.map(l=>{
+        let cls='log-info';
+        if(l.startsWith('OK:')) cls='log-ok';
+        else if(l.includes('ERRO')) cls='log-err';
+        else if(l.includes('===')) cls='log-ok';
+        return `<div class="${cls}">${l}</div>`;
+      }).join('');
+      logDiv.scrollTop = logDiv.scrollHeight;
+    }
+  } catch(e) {}
+}
+
+async function refresh8580() {
+  try {
+    const r = await fetch('/api/metrics-8580');
+    if (!r.ok) throw new Error();
+    const d = await r.json();
+    setGauge('cpu-bar-8580','cpu-val-8580',d.cpu.percent,d.cpu.percent+'%');
+    push(cpuChart8580,d.cpu.percent);
+    document.getElementById('load1-8580').textContent = d.load_avg[0].toFixed(2);
+    document.getElementById('load5-8580').textContent = d.load_avg[1].toFixed(2);
+    document.getElementById('load15-8580').textContent = d.load_avg[2].toFixed(2);
+    document.getElementById('cpu-cores-8580').textContent = d.cpu.count;
+    setGauge('mem-bar-8580','mem-val-8580',d.memory.percent,d.memory.percent+'%');
+    setGauge('swap-bar-8580','swap-val-8580',d.swap.percent,d.swap.percent+'%');
+    push(memChart8580,d.memory.percent);
+    document.getElementById('mem-used-8580').textContent = d.memory.used_gb;
+    document.getElementById('mem-total-8580').textContent = d.memory.total_gb;
+    document.getElementById('swap-used-8580').textContent = d.swap.used_gb;
+    document.getElementById('swap-total-8580').textContent = d.swap.total_gb;
+    document.getElementById('disk-bars-8580').innerHTML = d.disk.map(dk=>
+      `<div class="gauge-row">
+        <div class="gauge-label" title="${dk.mount}">${dk.mount.length>8?dk.mount.slice(-8):dk.mount}</div>
+        <div class="gauge-bar"><div class="gauge-fill ${colorClass(dk.percent)}" style="width:${dk.percent}%"></div></div>
+        <div class="gauge-val" style="color:${dk.percent>=90?'var(--red)':dk.percent>=75?'var(--amber)':'var(--green)'}">${dk.percent}%</div>
+      </div>
+      <div style="font-size:10px;color:var(--muted);margin-bottom:6px;padding-left:68px">${dk.used_gb}GB / ${dk.total_gb}GB</div>`
+    ).join('');
+    const dbTbody = document.getElementById('db-table-8580');
+    dbTbody.innerHTML = '';
+    for (const [name,conns] of Object.entries(d.db_connections).sort()) {
+      const port={ems2adt:25600,ems2cad:25601,ems2mov:25602,ems2mp:25603,ems5cad:25606,
+                  ems5mov:25607,hcm:25608,emsfnd:25619,eai:25621,dtviewer:25650,emsdes:25635,emsinc:25009}[name]||'--';
+      dbTbody.innerHTML += `<tr><td><b>${name}</b></td><td style="color:var(--muted)">${port}</td><td>${conns}</td>
+        <td><span class="badge ${conns>0?'up':'idle'}">${conns>0?'ATIVO':'IDLE'}</span></td></tr>`;
+    }
+    const procTbody = document.getElementById('proc-table-8580');
+    if (!d.progress_processes.length) {
+      procTbody.innerHTML = '<tr><td colspan="5" style="color:var(--muted)">Nenhum processo proserve encontrado</td></tr>';
+    } else {
+      const byBanco={};
+      for (const p of d.progress_processes) { const b=p.banco||'(broker)'; if(!byBanco[b]) byBanco[b]=[]; byBanco[b].push(p); }
+      procTbody.innerHTML = Object.entries(byBanco).sort().map(([banco,procs])=>{
+        const cpuTotal=procs.reduce((s,p)=>s+parseFloat(p.cpu||0),0).toFixed(1);
+        const memTotal=procs.reduce((s,p)=>s+parseFloat(p.mem||0),0).toFixed(1);
+        return `<tr><td style="font-size:10px;color:var(--muted)">${procs.map(p=>p.pid).join(', ')}</td><td>${cpuTotal}%</td><td>${memTotal}%</td><td><b>${banco}</b></td><td style="color:var(--muted)">${procs.length}</td></tr>`;
+      }).join('');
+    }
+    document.getElementById('ts-8580').textContent = '🕐 Última atualização: '+new Date().toLocaleTimeString('pt-BR');
+  } catch(e) {}
+}
+
+async function refreshDbResources8580() {
+  try {
+    const r = await fetch('/api/db-resources-8580',{credentials:'include'});
+    const d = await r.json();
+    document.getElementById('dbres-table-8580').innerHTML = Object.entries(d).sort().map(([banco,v])=>{
+      const cpuBar=v.cpu>0?`<span style="color:var(--blue)">${v.cpu}%</span>`:`<span style="color:var(--muted)">0%</span>`;
+      const memColor=v.mem_mb>500?'var(--red)':v.mem_mb>200?'var(--amber)':'var(--green)';
+      const sizeGB=v.size_mb>=1024?(v.size_mb/1024).toFixed(1)+'GB':v.size_mb.toFixed(0)+'MB';
+      const ioR=v.io_read_mb>=1024?(v.io_read_mb/1024).toFixed(1)+'GB':v.io_read_mb.toFixed(0)+'MB';
+      const ioW=v.io_write_mb>=1024?(v.io_write_mb/1024).toFixed(1)+'GB':v.io_write_mb.toFixed(0)+'MB';
+      const status=v.pids.length>0?'<span class="badge up">UP</span>':'<span class="badge idle">PARADO</span>';
+      return `<tr><td><b>${banco}</b></td><td>${cpuBar}</td><td style="color:${memColor}">${v.mem_mb.toFixed(0)} MB</td><td style="color:var(--muted)">${ioR}</td><td style="color:var(--muted)">${ioW}</td><td>${sizeGB}</td><td>${status}</td></tr>`;
+    }).join('');
+  } catch(e) {}
+}
+
+// ── auth ──────────────────────────────────────────────────────────────────────
+let perfilAtual = 'viewer';
+
+async function initAuth() {
+  const r = await fetch('/api/me', {credentials:'include'});
+  if (!r.ok || r.status === 401) { window.location.href = '/login'; return; }
+  const d = await r.json();
+  if (!d.ok) { window.location.href = '/login'; return; }
+  perfilAtual = d.perfil;
+  document.getElementById('user-label').textContent = `${d.nome} (${d.perfil})`;
+  document.getElementById('user-avatar').textContent = (d.nome||'?')[0].toUpperCase();
+  if (d.perfil === 'admin') {
+    document.getElementById('tab-usuarios').style.display = '';
+    document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'inline-flex');
+  }
+  refresh(); refreshUsers(); refreshBackup(); refreshDbResources();
+  refresh8480(); refreshUsers8480(); refreshBackup8480(); refreshDbResources8480();
+  refresh8580(); refreshUsers8580(); refreshBackup8580(); refreshDbResources8580();
+  setInterval(refresh, 5000);        setInterval(refreshUsers, 8000);
+  setInterval(refreshDbResources, 15000); setInterval(refreshBackup, 30000);
+  setInterval(refresh8480, 5000);    setInterval(refreshUsers8480, 8000);
+  setInterval(refreshDbResources8480, 15000); setInterval(refreshBackup8480, 30000);
+  setInterval(refresh8580, 5000);    setInterval(refreshUsers8580, 8000);
+  setInterval(refreshDbResources8580, 15000); setInterval(refreshBackup8580, 30000);
+}
+
+async function logout() {
+  await fetch('/api/logout', {method:'POST', credentials:'include'});
+  window.location.href = '/login';
+}
+
+// ── tabs ──────────────────────────────────────────────────────────────────────
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  if (tab === 'monitor') {
+    document.querySelectorAll('.tab')[0].classList.add('active');
+    document.getElementById('tab-monitor').classList.add('active');
+  } else if (tab === 'hml8480') {
+    document.querySelectorAll('.tab')[1].classList.add('active');
+    document.getElementById('tab-hml8480').classList.add('active');
+    cpuChart8480.resize(); memChart8480.resize();
+  } else if (tab === 'hml8580') {
+    document.querySelectorAll('.tab')[2].classList.add('active');
+    document.getElementById('tab-hml8580').classList.add('active');
+    cpuChart8580.resize(); memChart8580.resize();
+  } else {
+    document.getElementById('tab-usuarios').classList.add('active');
+    document.getElementById('tab-usuarios-content').classList.add('active');
+    carregarUsuarios();
+  }
+}
+
+// ── crud usuarios ─────────────────────────────────────────────────────────────
+async function carregarUsuarios() {
+  const r = await fetch('/api/usuarios', {credentials:'include'});
+  const lista = await r.json();
+  const tbody = document.getElementById('tbody-usuarios');
+  tbody.innerHTML = lista.map(u => `
+    <tr>
+      <td><b>${u.login}</b></td>
+      <td>${u.nome}</td>
+      <td><span class="badge-${u.perfil}">${u.perfil}</span></td>
+      <td><span class="badge ${u.ativo ? 'up' : 'idle'}">${u.ativo ? 'Ativo' : 'Inativo'}</span></td>
+      <td style="font-size:10px;color:var(--muted)">${u.criado_em}</td>
+      <td style="display:flex;gap:6px">
+        <button class="btn-sm btn-edit" onclick='editarUsuario(${JSON.stringify(u)})'>Editar</button>
+        <button class="btn-sm btn-del"  onclick="excluirUsuario(${u.id},'${u.login}')">Excluir</button>
+      </td>
+    </tr>`).join('');
+}
+
+function abrirModal(u) {
+  document.getElementById('modal-id').value     = u ? u.id : '';
+  document.getElementById('modal-login').value  = u ? u.login : '';
+  document.getElementById('modal-nome').value   = u ? u.nome : '';
+  document.getElementById('modal-senha').value  = '';
+  document.getElementById('modal-perfil').value = u ? u.perfil : 'viewer';
+  document.getElementById('modal-ativo').value  = u ? (u.ativo ? '1' : '0') : '1';
+  document.getElementById('modal-login').disabled = !!u;
+  document.getElementById('modal-titulo').textContent = u ? 'Editar Usuário' : 'Novo Usuário';
+  document.getElementById('senha-hint').style.display = u ? '' : 'none';
+  document.getElementById('modal-bg').classList.add('open');
+}
+function editarUsuario(u) { abrirModal(u); }
+function fecharModal() { document.getElementById('modal-bg').classList.remove('open'); }
+
+async function salvarUsuario() {
+  const id     = document.getElementById('modal-id').value;
+  const login  = document.getElementById('modal-login').value.trim();
+  const nome   = document.getElementById('modal-nome').value.trim();
+  const senha  = document.getElementById('modal-senha').value;
+  const perfil = document.getElementById('modal-perfil').value;
+  const ativo  = document.getElementById('modal-ativo').value === '1';
+  let r;
+  if (id) {
+    r = await fetch(`/api/usuarios/${id}`, {method:'PUT', credentials:'include',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({nome, perfil, ativo, ...(senha ? {senha} : {})})});
+  } else {
+    r = await fetch('/api/usuarios', {method:'POST', credentials:'include',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({login, nome, senha, perfil})});
+  }
+  const d = await r.json();
+  showToast(d.msg, d.ok ? 'success' : 'error');
+  if (d.ok) { fecharModal(); carregarUsuarios(); }
+}
+
+async function excluirUsuario(id, login) {
+  if (!confirm(`Excluir usuário "${login}"?`)) return;
+  const r = await fetch(`/api/usuarios/${id}`, {method:'DELETE', credentials:'include'});
+  const d = await r.json();
+  showToast(d.msg, d.ok ? 'success' : 'error');
+  if (d.ok) carregarUsuarios();
+}
+
+document.getElementById('modal-bg').addEventListener('click', e => {
+  if (e.target === document.getElementById('modal-bg')) fecharModal();
+});
+
+initAuth();
+</script>
+</body>
+</html>

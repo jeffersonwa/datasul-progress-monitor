@@ -2,7 +2,7 @@
 from flask import Flask, jsonify, send_from_directory, request, session, redirect, url_for
 from flask_cors import CORS
 from werkzeug.security import generate_password_hash, check_password_hash
-import psutil, subprocess, os, time, glob, re, sqlite3
+import psutil, subprocess, os, time, glob, re, sqlite3, datetime
 from functools import wraps
 
 app = Flask(__name__, static_folder='static')
@@ -15,7 +15,9 @@ PROGRESS_PORTS = {
     'ems2mov': 23602, 'ems2mp': 23603, 'ems5cad': 23606, 'ems5mov': 23607,
     'emsdes': 23635, 'emsfnd': 23619, 'emsinc': 23009, 'hcm': 23608
 }
-BKP_LOG_DIR = '/mnt/backup-progress/Backup-Progress/pp/logs'
+BKP_LOG_DIR      = '/mnt/backup-progress/Backup-Progress/pp/logs'
+BKP_LOG_DIR_8480 = '/mnt/backup-progress/Backup-Progress/pp/8480/logs'
+BKP_LOG_DIR_8580 = '/mnt/backup-progress/Backup-Progress/pp/8580/logs'
 
 PROGRESS_PORTS_8480 = {
     'dtviewer': 24650, 'eai': 24621, 'ems2adt': 24600, 'ems2cad': 24601,
@@ -683,10 +685,43 @@ def users_8480():
     u = get_progress_users_8480()
     return jsonify({'total': len(u), 'users': u})
 
+def get_backup_status_8480():
+    status = {'running': False, 'pid': None, 'last_log_date': None,
+              'last_log_lines': [], 'last_result': None, 'banco_status': {},
+              'mount_ok': os.path.ismount('/mnt/backup-progress')}
+    try:
+        logs = sorted(glob.glob(f'{BKP_LOG_DIR_8480}/backup-*.log'))
+        if logs:
+            last = logs[-1]
+            status['last_log_date'] = os.path.basename(last).replace('backup-','').replace('.log','')
+            with open(last) as f:
+                lines = [l.rstrip() for l in f.readlines() if l.strip()]
+            status['last_log_lines'] = lines[-40:]
+            start_idx = 0
+            for i, l in enumerate(lines):
+                if '=== INICIO' in l:
+                    start_idx = i
+            run_lines = lines[start_idx:]
+            banco_status = {}
+            for l in run_lines:
+                if l.startswith('OK:'):
+                    banco_status[l.split(':', 1)[1].strip()] = 'OK'
+                elif l.startswith('ERRO:'):
+                    banco_status[l.split(':', 1)[1].strip()] = 'ERRO'
+            status['banco_status'] = banco_status
+            erros = [b for b, s in banco_status.items() if s == 'ERRO']
+            oks   = [b for b, s in banco_status.items() if s == 'OK']
+            status['last_result'] = f'ERRO ({len(erros)} falha(s))' if erros else (f'OK ({len(oks)} banco(s))' if oks else ('Em andamento...' if status['running'] else 'Incompleto'))
+        else:
+            status['last_result'] = 'Sem backup registrado'
+    except:
+        pass
+    return status
+
 @app.route('/api/backup-status-8480')
 @login_required
 def backup_status_8480():
-    return jsonify(get_backup_status())
+    return jsonify(get_backup_status_8480())
 
 @app.route('/api/db-resources-8480')
 @login_required
@@ -730,10 +765,43 @@ def users_8580():
     u = get_progress_users_8580()
     return jsonify({'total': len(u), 'users': u})
 
+def get_backup_status_8580():
+    status = {'running': False, 'pid': None, 'last_log_date': None,
+              'last_log_lines': [], 'last_result': None, 'banco_status': {},
+              'mount_ok': os.path.ismount('/mnt/backup-progress')}
+    try:
+        logs = sorted(glob.glob(f'{BKP_LOG_DIR_8580}/backup-*.log'))
+        if logs:
+            last = logs[-1]
+            status['last_log_date'] = os.path.basename(last).replace('backup-','').replace('.log','')
+            with open(last) as f:
+                lines = [l.rstrip() for l in f.readlines() if l.strip()]
+            status['last_log_lines'] = lines[-40:]
+            start_idx = 0
+            for i, l in enumerate(lines):
+                if '=== INICIO' in l:
+                    start_idx = i
+            run_lines = lines[start_idx:]
+            banco_status = {}
+            for l in run_lines:
+                if l.startswith('OK:'):
+                    banco_status[l.split(':', 1)[1].strip()] = 'OK'
+                elif l.startswith('ERRO:'):
+                    banco_status[l.split(':', 1)[1].strip()] = 'ERRO'
+            status['banco_status'] = banco_status
+            erros = [b for b, s in banco_status.items() if s == 'ERRO']
+            oks   = [b for b, s in banco_status.items() if s == 'OK']
+            status['last_result'] = f'ERRO ({len(erros)} falha(s))' if erros else (f'OK ({len(oks)} banco(s))' if oks else ('Em andamento...' if status['running'] else 'Incompleto'))
+        else:
+            status['last_result'] = 'Sem backup registrado'
+    except:
+        pass
+    return status
+
 @app.route('/api/backup-status-8580')
 @login_required
 def backup_status_8580():
-    return jsonify(get_backup_status())
+    return jsonify(get_backup_status_8580())
 
 @app.route('/api/db-resources-8580')
 @login_required
@@ -771,6 +839,7 @@ BANCO_SCRIPTS = {
         'derruba':  '/opt/dashboard/derruba_8480.sh',
         'inicia':   '/opt/dashboard/carga_8480.sh',
         'atualiza': '/opt/dashboard/atualiza_8480.sh',
+        'bkp':      '/opt/dashboard/executa_bkp_8480.sh',
     },
     '8380': {
         'derruba': '/opt/dashboard/derruba_8380.sh',
@@ -781,6 +850,7 @@ BANCO_SCRIPTS = {
         'derruba':  '/opt/dashboard/derruba_8580.sh',
         'inicia':   '/opt/dashboard/carga_8580.sh',
         'atualiza': '/opt/dashboard/atualiza_8580.sh',
+        'bkp':      '/opt/dashboard/executa_bkp_8580.sh',
     }
 }
 
