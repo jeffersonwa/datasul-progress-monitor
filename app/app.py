@@ -397,9 +397,8 @@ def get_db_resources_8480():
     for banco in banks:
         size_mb = 0
         try:
-            for ext in ['.db', '.bi', '.ai', '.lg']:
-                f = os.path.join(DB_DIR_8480, banco + ext)
-                if os.path.exists(f):
+            for f in glob.glob(os.path.join(DB_DIR_8480, banco + '.*')):
+                if os.path.isfile(f):
                     size_mb += os.path.getsize(f) / (1024 * 1024)
         except:
             pass
@@ -509,9 +508,8 @@ def get_db_resources_8580():
     for banco in banks:
         size_mb = 0
         try:
-            for ext in ['.db', '.bi', '.ai', '.lg']:
-                f = os.path.join(DB_DIR_8580, banco + ext)
-                if os.path.exists(f):
+            for f in glob.glob(os.path.join(DB_DIR_8580, banco + '.*')):
+                if os.path.isfile(f):
                     size_mb += os.path.getsize(f) / (1024 * 1024)
         except:
             pass
@@ -556,13 +554,12 @@ def get_db_resources():
     banks = list(PROGRESS_PORTS.keys())
     resources = {}
 
-    # tamanho dos arquivos de banco no disco
+    # tamanho dos arquivos de banco no disco (inclui extents .d*, .b*, .db, .lg)
     for banco in banks:
         size_mb = 0
         try:
-            for ext in ['.db', '.bi', '.ai', '.lg']:
-                f = os.path.join(DB_DIR, banco + ext)
-                if os.path.exists(f):
+            for f in glob.glob(os.path.join(DB_DIR, banco + '.*')):
+                if os.path.isfile(f):
                     size_mb += os.path.getsize(f) / (1024 * 1024)
         except:
             pass
