@@ -2,7 +2,7 @@
 export DLC=/usr/dlc128
 export PATH=$PATH:$DLC/bin
 
-BKP_DIR=/mnt/backup-progress/Backup-Progress/pp
+BKP_DIR=/mnt/backup-progress/Backup-Progress/pp/8380
 LOG_DIR=$BKP_DIR/logs
 DATA=$(date +%Y-%m-%d)
 LOG=$LOG_DIR/backup-$DATA.log
