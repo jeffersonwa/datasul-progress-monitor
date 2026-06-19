@@ -397,7 +397,7 @@ def get_db_resources_8480():
     for banco in banks:
         size_mb = 0
         try:
-            for f in glob.glob(os.path.join(DB_DIR_8480, banco + '.*')):
+            for f in glob.glob(os.path.join(DB_DIR_8480, banco + '*')):
                 if os.path.isfile(f):
                     size_mb += os.path.getsize(f) / (1024 * 1024)
         except:
@@ -508,7 +508,7 @@ def get_db_resources_8580():
     for banco in banks:
         size_mb = 0
         try:
-            for f in glob.glob(os.path.join(DB_DIR_8580, banco + '.*')):
+            for f in glob.glob(os.path.join(DB_DIR_8580, banco + '*')):
                 if os.path.isfile(f):
                     size_mb += os.path.getsize(f) / (1024 * 1024)
         except:
@@ -558,7 +558,7 @@ def get_db_resources():
     for banco in banks:
         size_mb = 0
         try:
-            for f in glob.glob(os.path.join(DB_DIR, banco + '.*')):
+            for f in glob.glob(os.path.join(DB_DIR, banco + '*')):
                 if os.path.isfile(f):
                     size_mb += os.path.getsize(f) / (1024 * 1024)
         except:
