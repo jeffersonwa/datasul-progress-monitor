@@ -1058,11 +1058,20 @@ async function pollJob(jobKey, statusEl) {
 async function bancoAction(env, action) {
   const key = `${env}_${action}`;
   if (!confirm(ACTION_CONFIRMS[key])) return;
+
+  // Solicitar senha para ações destrutivas
+  let payload = {env, action};
+  if (action === 'derruba') {
+    const senha = prompt(`Digite a senha para derrubar bancos ${env}:`);
+    if (!senha) { showToast('Operação cancelada', 'info'); return; }
+    payload.senha = senha;
+  }
+
   try {
     const r = await fetch('/api/banco-action', {
       method: 'POST', credentials: 'include',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({env, action})
+      body: JSON.stringify(payload)
     });
     const d = await r.json();
     if (!d.ok) { showToast(d.msg, 'error'); return; }
