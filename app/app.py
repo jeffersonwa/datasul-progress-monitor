@@ -863,6 +863,14 @@ def banco_action():
     action = data.get('action', '')
     if env not in BANCO_SCRIPTS or action not in BANCO_SCRIPTS[env]:
         return jsonify({'ok': False, 'msg': 'Acao ou ambiente invalido'}), 400
+
+    # Validar senha para ações destrutivas (derruba)
+    if action == 'derruba':
+        senha = data.get('senha', '')
+        senha_correta = f'derrubadb{env}'
+        if senha != senha_correta:
+            return jsonify({'ok': False, 'msg': 'Senha incorreta para derrubar bancos'}), 403
+
     script = BANCO_SCRIPTS[env][action]
     job_key = f"{env}_{action}"
     if _banco_job.get(job_key, {}).get('status') == 'running':
@@ -870,7 +878,11 @@ def banco_action():
     def _run():
         _banco_job[job_key] = {'status': 'running', 'log': [], 'started': time.strftime('%H:%M:%S')}
         try:
-            proc = subprocess.Popen(['sudo', script], stdout=subprocess.PIPE,
+            # Passar senha como argumento para scripts de derruba
+            cmd = ['sudo', script]
+            if action == 'derruba':
+                cmd.append(senha)
+            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
                                     stderr=subprocess.STDOUT, text=True)
             for line in proc.stdout:
                 _banco_job[job_key]['log'].append(line.rstrip())
