@@ -501,7 +501,7 @@ Para implantar o painel no servidor Ubuntu (IP `10.0.0.240`), você pode utiliza
 
 ### 🚀 Método 1: Instalação Automatizada (Recomendado)
 
-O repositório inclui o script [install.sh](file:///c:/Users/jefferson.almeida.JA/.gemini/antigravity-ide/scratch/db-progress-dashboard/install.sh) que executa todo o processo de setup de forma robusta e segura.
+O repositório inclui o script [install.sh](install.sh) que executa todo o processo de setup de forma robusta e segura.
 
 #### O que o script faz:
 1. Valida se a execução está sendo feita com privilégios administrativos (`root`/`sudo`).
@@ -515,14 +515,19 @@ O repositório inclui o script [install.sh](file:///c:/Users/jefferson.almeida.J
 9. Recarrega as configurações e inicia o serviço.
 
 #### Como executar:
-Transfira os arquivos do repositório para o servidor Ubuntu e execute:
+Você pode baixar o script diretamente do repositório no servidor Ubuntu e executá-lo:
+
 ```bash
+# Baixar o instalador direto do GitHub
+curl -O https://raw.githubusercontent.com/jeffersonwa/datasul-progress-monitor/main/install.sh
+
 # Conceder permissão de execução ao instalador
 chmod +x install.sh
 
 # Executar o instalador como root
 sudo ./install.sh
 ```
+
 
 ---
 
