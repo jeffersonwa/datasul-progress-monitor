@@ -1,10 +1,32 @@
 # Painel de Monitoramento Datasul & Progress OpenEdge
 
+[![Python](https://img.shields.io/badge/Python-3.14%2B-blue?logo=python&logoColor=white)](https://python.org)
+[![Flask](https://img.shields.io/badge/Flask-3.x-lightgrey?logo=flask&logoColor=white)](https://flask.palletsprojects.com)
+[![SQLite](https://img.shields.io/badge/SQLite-3-003B57?logo=sqlite&logoColor=white)](https://sqlite.org)
+[![Platform](https://img.shields.io/badge/Platform-Ubuntu%20Server-orange?logo=ubuntu&logoColor=white)](https://ubuntu.com)
+[![Progress OpenEdge](https://img.shields.io/badge/Progress-OpenEdge%2012.8-red)](https://www.progress.com/openedge)
+
 Este é um dashboard web leve e seguro desenvolvido em **Flask (Python 3)** para monitorar e gerenciar recursos de sistema e bancos de dados **Progress OpenEdge** dos ambientes **8380 (Produção)**, **8480 (Homologação)** e **8580 (Homologação)** hospedados no servidor Ubuntu.
 
 O painel oferece monitoramento de hardware em tempo real, status dos bancos de dados, conexões ativas, logs de backup e a capacidade de realizar ações administrativas (iniciar/derrubar base, atualizar estrutura e desconectar usuários travados).
 
 ---
+
+## 📌 Tabela de Conteúdos
+
+- [🏗️ Arquitetura do Sistema](#️-arquitetura-do-sistema)
+- [🛠️ Tecnologias Utilizadas](#️-tecnologias-utilizadas)
+- [📂 Estrutura de Arquivos no Projeto](#-estrutura-de-arquivos-no-projeto)
+- [💾 Mapeamento de Ambientes e Bancos de Dados (Recursos)](#-mapeamento-de-ambientes-e-bancos-de-dados-recursos)
+- [📜 Scripts de Administração e Monitoramento](#-scripts-de-administração-e-monitoramento-optdashboard)
+- [📊 Detalhamento das APIs e Endpoints do Backend](#-detalhamento-das-apis-e-endpoints-do-backend)
+- [⚙️ Configuração do Servidor e Implantação](#️-configuração-do-servidor-e-implantação)
+- [📈 Comandos Úteis e Diagnósticos](#-comandos-úteis-e-diagnósticos)
+- [🛠️ Resolução de Problemas (Troubleshooting)](#️-resolução-de-problemas-troubleshooting)
+- [🛡️ Recomendações de Segurança](#-recomendações-de-segurança)
+
+---
+
 
 ## 🏗️ Arquitetura do Sistema
 
@@ -609,3 +631,83 @@ CREATE TABLE usuarios (
 
 > [!WARNING]
 > Recomenda-se alterar a senha do usuário `admin` logo no primeiro acesso ou criar uma nova conta administrativa e excluir a padrão por questões de segurança.
+
+---
+
+## 📈 Comandos Úteis e Diagnósticos
+
+Caso precise gerenciar ou depurar o painel diretamente no console do servidor Ubuntu:
+
+### Status e Logs do Serviço Systemd
+```bash
+# Verificar se o serviço está em execução
+sudo systemctl status dashboard.service
+
+# Visualizar logs em tempo real (últimas 100 linhas e segue ativo)
+sudo journalctl -u dashboard.service -f -n 100
+
+# Reiniciar o painel
+sudo systemctl restart dashboard.service
+
+# Parar o painel
+sudo systemctl stop dashboard.service
+```
+
+### Verificação de Rede e Portas Ouvindo
+```bash
+# Verificar se o dashboard está rodando na porta 3000
+sudo ss -tlnp | grep :3000
+
+# Verificar se as portas TCP dos bancos Progress estão abertas (ex: porta 236xx, 246xx, 256xx)
+sudo ss -tlnp | grep -E "236|246|256"
+```
+
+### Processos Ativos
+```bash
+# Listar processos Progress proserve ativos no sistema
+ps -ef | grep _mprosrv
+
+# Listar processos Glances ativos
+ps -ef | grep glances
+```
+
+---
+
+## 🛠️ Resolução de Problemas (Troubleshooting)
+
+### 1. Banco de Dados Progress Não Inicia (Erro de Lock `.lk`)
+Se o console do banco retornar erros ao tentar iniciar e o status ficar como `ERRO`, verifique se há arquivos `.lk` órfãos no diretório do banco.
+* **Causa:** O banco de dados foi encerrado incorretamente (queda de energia, kill -9) e o arquivo de controle de lock ficou pendente.
+* **Solução:**
+  1. Certifique-se de que não há nenhum processo do banco rodando: `ps -ef | grep -E "_mprosrv|_mprshut|$banco"`.
+  2. Remova o arquivo `.lk` correspondente: `sudo rm /bancos/DATABASE-JA-<ENV>/$banco.lk`.
+  3. Tente subir o banco novamente pelo painel ou manualmente via `carga_*.sh`.
+
+### 2. Ações de Iniciar/Derrubar Retornam `sudo: a password is required`
+Se ao clicar em "Inicia Base" ou "Derruba Base" ocorrer erro interno no dashboard e logs do journalctl apontarem requisição de senha para o sudo.
+* **Causa:** O arquivo `/etc/sudoers.d/dashboard` não existe, está com permissões incorretas ou o comando no script local não bate exatamente com a regra declarada.
+* **Solução:**
+  1. Verifique se o arquivo existe e tem permissão correta: `ls -la /etc/sudoers.d/dashboard` (deve ser `-r--r-----` / `0440`).
+  2. Teste executar o comando como o usuário `ti` diretamente: `sudo -u ti sudo /opt/dashboard/list_users.sh`.
+  3. Verifique se a linha do sudoers bate letra por letra com os scripts em `/opt/dashboard/`.
+
+### 3. Bibliotecas do Python Faltando ou Erros de `Externally Managed Environment`
+* **Causa:** Tentativa de instalar dependências globais via `pip3 install` em distribuições Linux modernas (Ubuntu 24.04+).
+* **Solução:**
+  Sempre utilize a venv criada em `/opt/dashboard/venv`. Para instalar pacotes adicionais:
+  ```bash
+  sudo -u ti /opt/dashboard/venv/bin/pip install <nome-do-pacote>
+  ```
+
+---
+
+## 🛡️ Recomendações de Segurança
+
+1. **Alteração de Senha Padrão:** Crie imediatamente um novo usuário com perfil `admin` e exclua o usuário `admin` original para mitigar ataques de força bruta.
+2. **Permissões do SQLite:** Restrinja a leitura do arquivo `users.db` para que somente o proprietário `ti` o acesse:
+   ```bash
+   sudo chmod 600 /opt/dashboard/users.db
+   sudo chown ti:ti /opt/dashboard/users.db
+   ```
+3. **HTTPS / Proxy Reverso:** Em ambientes de produção reais, recomenda-se configurar um proxy reverso com Nginx e certificados SSL (Let's Encrypt) na frente da porta 3000 para trafegar os cookies de sessão de forma criptografada.
+
