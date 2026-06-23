@@ -344,6 +344,7 @@ tbody tr:hover td { background: var(--s2) !important; }
   <button class="tab active" data-env="monitor"   onclick="switchTab('monitor')">&#9671; Monitor 8380</button>
   <button class="tab"        data-env="hml8480"   onclick="switchTab('hml8480')">&#9671; HML 8480</button>
   <button class="tab"        data-env="hml8580"   onclick="switchTab('hml8580')">&#9671; HML 8580</button>
+  <button class="tab"        data-env="relatorios" onclick="switchTab('relatorios')">&#9671; Relatório de Conexões</button>
   <button class="tab"        data-env="usuarios"  onclick="switchTab('usuarios')" id="tab-usuarios" style="display:none">&#9671; Usuários do Sistema</button>
 </div>
 
@@ -716,6 +717,77 @@ tbody tr:hover td { background: var(--s2) !important; }
   </div>
   <div class="ts-line" id="ts-8580">&#128336; Última atualização: --</div>
 </div><!-- /tab-hml8580 -->
+
+<!-- ══════════════════════════════════════════════════════ TAB: RELATÓRIOS -->
+<div class="tab-content" id="tab-relatorios">
+  <div class="sec">
+    <div class="sec-icon ci ci-blue">&#128203;</div>
+    <span class="sec-label">Relatório de Conexões e Horas de Uso</span>
+    <div class="sec-line"></div>
+  </div>
+
+  <div class="card" style="margin-bottom: 20px;">
+    <h2><span class="ci ci-blue">&#128269;</span> Filtros de Pesquisa</h2>
+    <div class="stat-grid" style="grid-template-columns: repeat(5, 1fr); gap: 14px; align-items: flex-end; flex-wrap: wrap;">
+      <div>
+        <label style="display:block; font-size:10px; color:var(--muted); margin-bottom:5px; font-weight:600; text-transform:uppercase;">Ambiente</label>
+        <select id="filt-env" style="width:100%; background:var(--s0); border:1px solid var(--border); border-radius:var(--rsm); color:var(--text); padding:7px 10px; font-size:12px;">
+          <option value="">Todos</option>
+          <option value="8380">Produção 8380</option>
+          <option value="8480">Homologação 8480</option>
+          <option value="8580">Homologação 8580</option>
+        </select>
+      </div>
+      <div>
+        <label style="display:block; font-size:10px; color:var(--muted); margin-bottom:5px; font-weight:600; text-transform:uppercase;">Usuário</label>
+        <input id="filt-usuario" type="text" placeholder="Ex: joao.silva" style="width:100%; background:var(--s0); border:1px solid var(--border); border-radius:var(--rsm); color:var(--text); padding:7px 10px; font-size:12px;">
+      </div>
+      <div>
+        <label style="display:block; font-size:10px; color:var(--muted); margin-bottom:5px; font-weight:600; text-transform:uppercase;">Data Início</label>
+        <input id="filt-data-inicio" type="date" style="width:100%; background:var(--s0); border:1px solid var(--border); border-radius:var(--rsm); color:var(--text); padding:6px 10px; font-size:12px;">
+      </div>
+      <div>
+        <label style="display:block; font-size:10px; color:var(--muted); margin-bottom:5px; font-weight:600; text-transform:uppercase;">Data Fim</label>
+        <input id="filt-data-fim" type="date" style="width:100%; background:var(--s0); border:1px solid var(--border); border-radius:var(--rsm); color:var(--text); padding:6px 10px; font-size:12px;">
+      </div>
+      <div>
+        <button class="btn-primary" onclick="carregarRelatorios()" style="width:100%; padding:8px; font-size:12px; font-weight:600;">Filtrar Relatório</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <!-- Bloco 1: Tempo Consolidado por Dia -->
+    <div class="card">
+      <h2><span class="ci ci-blue">&#128337;</span> Tempo de Conexão Consolidado por Dia</h2>
+      <div class="table-wrap" style="max-height: 400px; overflow-y: auto;">
+        <table>
+          <thead>
+            <tr><th>Dia</th><th>Usuário</th><th>Ambiente</th><th style="text-align:center;">Total de Conexões</th><th>Tempo Total</th></tr>
+          </thead>
+          <tbody id="tbl-tempo-diario">
+            <tr><td colspan="5" style="color:var(--muted); text-align:center;">Clique em Filtrar para carregar os dados...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Bloco 2: Histórico Detalhado de Conexões -->
+    <div class="card">
+      <h2><span class="ci ci-green">&#128101;</span> Log de Sessões Históricas (Últimas 1000)</h2>
+      <div class="table-wrap" style="max-height: 400px; overflow-y: auto;">
+        <table>
+          <thead>
+            <tr><th>Usuário</th><th>Banco</th><th>Amb.</th><th>Workstation</th><th>Conectado em</th><th>Desconectado em</th><th>Duração</th></tr>
+          </thead>
+          <tbody id="tbl-conexoes-detalhe">
+            <tr><td colspan="7" style="color:var(--muted); text-align:center;">Clique em Filtrar para carregar os dados...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- ══════════════════════════════════════════════════════ TAB: USUÁRIOS -->
 <div class="tab-content" id="tab-usuarios-content">
@@ -1440,21 +1512,100 @@ async function logout() {
 function switchTab(tab) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  
+  const selectedTab = document.querySelector(`.tab[data-env="${tab}"]`);
+  if (selectedTab) selectedTab.classList.add('active');
+  
   if (tab === 'monitor') {
-    document.querySelectorAll('.tab')[0].classList.add('active');
     document.getElementById('tab-monitor').classList.add('active');
   } else if (tab === 'hml8480') {
-    document.querySelectorAll('.tab')[1].classList.add('active');
     document.getElementById('tab-hml8480').classList.add('active');
     cpuChart8480.resize(); memChart8480.resize();
   } else if (tab === 'hml8580') {
-    document.querySelectorAll('.tab')[2].classList.add('active');
     document.getElementById('tab-hml8580').classList.add('active');
     cpuChart8580.resize(); memChart8580.resize();
+  } else if (tab === 'relatorios') {
+    document.getElementById('tab-relatorios').classList.add('active');
+    const inicio = document.getElementById('filt-data-inicio');
+    const fim = document.getElementById('filt-data-fim');
+    if (!inicio.value) {
+      const hoje = new Date().toISOString().split('T')[0];
+      inicio.value = hoje;
+      fim.value = hoje;
+    }
+    carregarRelatorios();
   } else {
     document.getElementById('tab-usuarios').classList.add('active');
     document.getElementById('tab-usuarios-content').classList.add('active');
     carregarUsuarios();
+  }
+}
+
+// ── relatorios ───────────────────────────────────────────────────────────────
+function formatarSegundos(segundos) {
+  if (!segundos || segundos < 0) return '00:00:00';
+  const hrs = Math.floor(segundos / 3600);
+  const mins = Math.floor((segundos % 3600) / 60);
+  const secs = segundos % 60;
+  return [
+    hrs.toString().padStart(2, '0'),
+    mins.toString().padStart(2, '0'),
+    secs.toString().padStart(2, '0')
+  ].join(':');
+}
+
+async function carregarRelatorios() {
+  const env = document.getElementById('filt-env').value;
+  const usuario = document.getElementById('filt-usuario').value.trim();
+  const data_inicio = document.getElementById('filt-data-inicio').value;
+  const data_fim = document.getElementById('filt-data-fim').value;
+
+  const params = new URLSearchParams({ env, usuario, data_inicio, data_fim }).toString();
+
+  try {
+    // 1. Carregar detalhe de conexões
+    const rCon = await fetch(`/api/relatorio/conexoes?${params}`, { credentials: 'include' });
+    const conexoes = await rCon.json();
+    const tbodyDet = document.getElementById('tbl-conexoes-detalhe');
+    
+    if (conexoes.length === 0) {
+      tbodyDet.innerHTML = '<tr><td colspan="7" style="color:var(--muted); text-align:center;">Nenhuma sessão encontrada para os filtros aplicados.</td></tr>';
+    } else {
+      tbodyDet.innerHTML = conexoes.map(c => {
+        const desc = c.desconectado_em ? c.desconectado_em : '<span class="badge running">ATIVO</span>';
+        const duracao = c.desconectado_em ? formatarSegundos(c.duracao_segundos) : '--';
+        return `<tr>
+          <td><b style="color:var(--blue);">${c.usuario}</b></td>
+          <td>${c.db}</td>
+          <td><span style="font-size:10px; color:var(--muted);">${c.env}</span></td>
+          <td>${c.workstation}</td>
+          <td style="font-size:10px; color:var(--muted);">${c.conectado_em}</td>
+          <td style="font-size:10px; color:var(--muted);">${desc}</td>
+          <td><b>${duracao}</b></td>
+        </tr>`;
+      }).join('');
+    }
+
+    // 2. Carregar tempo diário consolidado
+    const rTempo = await fetch(`/api/relatorio/tempo-diario?${params}`, { credentials: 'include' });
+    const tempos = await rTempo.json();
+    const tbodyTempo = document.getElementById('tbl-tempo-diario');
+
+    if (tempos.length === 0) {
+      tbodyTempo.innerHTML = '<tr><td colspan="5" style="color:var(--muted); text-align:center;">Nenhum consolidado encontrado para os filtros aplicados.</td></tr>';
+    } else {
+      tbodyTempo.innerHTML = tempos.map(t => {
+        return `<tr>
+          <td><b>${t.dia}</b></td>
+          <td><b style="color:var(--blue);">${t.usuario}</b></td>
+          <td><span style="font-size:10px; color:var(--muted);">${t.env}</span></td>
+          <td style="text-align:center;">${t.total_conexoes}</td>
+          <td><b style="color:var(--green);">${formatarSegundos(t.total_segundos)}</b></td>
+        </tr>`;
+      }).join('');
+    }
+  } catch (e) {
+    showToast('Erro ao carregar relatórios', 'error');
   }
 }
 

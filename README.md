@@ -491,6 +491,53 @@ Verifica o log e o status da tarefa assíncrona em execução.
   }
   ```
 
+#### `GET /api/relatorio/conexoes`
+Retorna a listagem detalhada do histórico de sessões do Progress OpenEdge.
+* **Parâmetros de Consulta (Query Params - Opcionais):**
+  * `env`: Ambiente (`8380`, `8480`, `8580`)
+  * `usuario`: Filtrar por nome do usuário
+  * `data_inicio`: Data inicial de conexão (`YYYY-MM-DD`)
+  * `data_fim`: Data limite de conexão (`YYYY-MM-DD`)
+* **Resposta (200 OK):**
+  ```json
+  [
+    {
+      "id": 1,
+      "env": "8380",
+      "db": "ems2cad",
+      "usr_num": "15",
+      "pid": "32104",
+      "usuario": "jefferson.almeida",
+      "workstation": "WS-JA-02",
+      "tipo": "REMC",
+      "login_time_progress": "Jun 23 09:15",
+      "conectado_em": "2026-06-23 09:15:02",
+      "desconectado_em": "2026-06-23 10:30:15",
+      "duracao_segundos": 4513
+    }
+  ]
+  ```
+
+#### `GET /api/relatorio/tempo-diario`
+Retorna a consolidação do tempo de uso por usuário por dia em segundos.
+* **Parâmetros de Consulta (Query Params - Opcionais):**
+  * `env`: Ambiente (`8380`, `8480`, `8580`)
+  * `usuario`: Filtrar por nome do usuário
+  * `data_inicio`: Data inicial (`YYYY-MM-DD`)
+  * `data_fim`: Data limite (`YYYY-MM-DD`)
+* **Resposta (200 OK):**
+  ```json
+  [
+    {
+      "usuario": "jefferson.almeida",
+      "env": "8380",
+      "dia": "2026-06-23",
+      "total_segundos": 4513,
+      "total_conexoes": 1
+    }
+  ]
+  ```
+
 ---
 
 ## ⚙️ Configuração do Servidor e Implantação
@@ -614,8 +661,9 @@ sudo systemctl status dashboard.service
 ```
 
 ### 3. Estrutura do Banco de Dados SQLite (`users.db`)
-O banco de dados SQLite local localiza-se em `/opt/dashboard/users.db`. O esquema da tabela `usuarios` está estruturado da seguinte forma:
+O banco de dados SQLite local localiza-se em `/opt/dashboard/users.db`. O esquema das tabelas está estruturado da seguinte forma:
 
+#### Tabela `usuarios`
 ```sql
 CREATE TABLE usuarios (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -625,6 +673,24 @@ CREATE TABLE usuarios (
     perfil TEXT NOT NULL DEFAULT 'viewer', -- 'admin' ou 'viewer'
     ativo INTEGER NOT NULL DEFAULT 1,      -- 1 para Ativo, 0 para Inativo
     criado_em TEXT DEFAULT (datetime('now','localtime'))
+);
+```
+
+#### Tabela `historico_conexoes`
+```sql
+CREATE TABLE historico_conexoes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    env TEXT NOT NULL,                  -- '8380', '8480' ou '8580'
+    db TEXT NOT NULL,                   -- Nome do banco (ex: 'ems2cad')
+    usr_num TEXT NOT NULL,              -- Número de usuário Progress
+    pid TEXT NOT NULL,                  -- Process ID do cliente Progress
+    usuario TEXT NOT NULL,              -- Nome do usuário conectado no Datasul
+    workstation TEXT NOT NULL,          -- Terminal / Workstation do usuário
+    tipo TEXT NOT NULL,                 -- Tipo de conexão (ex: 'SELF', 'REMC')
+    login_time_progress TEXT,           -- Hora do login informada pelo Progress
+    conectado_em TEXT NOT NULL,         -- Data/Hora detecção da conexão ativa
+    desconectado_em TEXT,               -- Data/Hora detecção do encerramento (ou NULL)
+    duracao_segundos INTEGER DEFAULT 0  -- Tempo de conexão em segundos
 );
 ```
 

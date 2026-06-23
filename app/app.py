@@ -50,6 +50,20 @@ def init_db():
             ativo INTEGER NOT NULL DEFAULT 1,
             criado_em TEXT DEFAULT (datetime('now','localtime'))
         )''')
+        c.execute('''CREATE TABLE IF NOT EXISTS historico_conexoes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            env TEXT NOT NULL,
+            db TEXT NOT NULL,
+            usr_num TEXT NOT NULL,
+            pid TEXT NOT NULL,
+            usuario TEXT NOT NULL,
+            workstation TEXT NOT NULL,
+            tipo TEXT NOT NULL,
+            login_time_progress TEXT,
+            conectado_em TEXT NOT NULL,
+            desconectado_em TEXT,
+            duracao_segundos INTEGER DEFAULT 0
+        )''')
         # admin padrao se nao existir
         if not c.execute("SELECT 1 FROM usuarios WHERE login='admin'").fetchone():
             c.execute("INSERT INTO usuarios (login,senha,nome,perfil) VALUES (?,?,?,?)",
@@ -59,6 +73,100 @@ def init_db():
 init_db()
 
 import threading
+
+def track_user_connections_job():
+    while True:
+        try:
+            active_sessions = []
+            
+            # Coleta do 8380 (Prod)
+            try:
+                users_8380 = get_progress_users()
+                for u in users_8380:
+                    active_sessions.append({
+                        'env': '8380', 'db': u['db'], 'usr_num': u['usr_num'],
+                        'pid': u['pid'], 'usuario': u['usuario'], 'workstation': u['workstation'],
+                        'tipo': u['tipo'], 'hora': u['hora']
+                    })
+            except:
+                pass
+                
+            # Coleta do 8480 (HML)
+            try:
+                users_8480 = get_progress_users_8480()
+                for u in users_8480:
+                    active_sessions.append({
+                        'env': '8480', 'db': u['db'], 'usr_num': u['usr_num'],
+                        'pid': u['pid'], 'usuario': u['usuario'], 'workstation': u['workstation'],
+                        'tipo': u['tipo'], 'hora': u['hora']
+                    })
+            except:
+                pass
+                
+            # Coleta do 8580 (HML)
+            try:
+                users_8580 = get_progress_users_8580()
+                for u in users_8580:
+                    active_sessions.append({
+                        'env': '8580', 'db': u['db'], 'usr_num': u['usr_num'],
+                        'pid': u['pid'], 'usuario': u['usuario'], 'workstation': u['workstation'],
+                        'tipo': u['tipo'], 'hora': u['hora']
+                    })
+            except:
+                pass
+
+            # Processa e sincroniza com o banco SQLite
+            with db_conn() as c:
+                open_db_sessions = c.execute(
+                    "SELECT id, env, db, usr_num, pid, conectado_em FROM historico_conexoes WHERE desconectado_em IS NULL"
+                ).fetchall()
+                
+                open_sessions_map = {
+                    (s['env'], s['db'], s['usr_num'], s['pid']): {
+                        'id': s['id'],
+                        'conectado_em': s['conectado_em']
+                    }
+                    for s in open_db_sessions
+                }
+                
+                current_active_keys = set()
+                now_str = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                
+                for s in active_sessions:
+                    key = (s['env'], s['db'], s['usr_num'], s['pid'])
+                    current_active_keys.add(key)
+                    
+                    if key not in open_sessions_map:
+                        c.execute(
+                            """INSERT INTO historico_conexoes 
+                            (env, db, usr_num, pid, usuario, workstation, tipo, login_time_progress, conectado_em) 
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                            (s['env'], s['db'], s['usr_num'], s['pid'], s['usuario'], s['workstation'], s['tipo'], s['hora'], now_str)
+                        )
+                
+                for key, session_info in open_sessions_map.items():
+                    if key not in current_active_keys:
+                        try:
+                            start_dt = datetime.datetime.strptime(session_info['conectado_em'], '%Y-%m-%d %H:%M:%S')
+                            end_dt = datetime.datetime.now()
+                            duration_sec = int((end_dt - start_dt).total_seconds())
+                            if duration_sec < 0:
+                                duration_sec = 0
+                        except:
+                            duration_sec = 0
+                            
+                        c.execute(
+                            """UPDATE historico_conexoes 
+                            SET desconectado_em = ?, duracao_segundos = ? 
+                            WHERE id = ?""",
+                            (now_str, duration_sec, session_info['id'])
+                        )
+                c.commit()
+        except:
+            pass
+        time.sleep(30)
+
+threading.Thread(target=track_user_connections_job, daemon=True).start()
 
 # cache de metricas do sistema atualizado a cada 3s em background
 _sys_metrics = {}
@@ -941,6 +1049,77 @@ def banco_job_status(job_key):
     if not job:
         return jsonify({'status': 'idle', 'log': []})
     return jsonify({'status': job['status'], 'log': job['log'], 'started': job.get('started','')})
+
+@app.route('/api/relatorio/conexoes')
+@login_required
+def api_relatorio_conexoes():
+    env = request.args.get('env', '').strip()
+    usuario = request.args.get('usuario', '').strip()
+    data_inicio = request.args.get('data_inicio', '').strip()
+    data_fim = request.args.get('data_fim', '').strip()
+    
+    query = "SELECT * FROM historico_conexoes WHERE 1=1"
+    params = []
+    
+    if env:
+        query += " AND env = ?"
+        params.append(env)
+    if usuario:
+        query += " AND usuario LIKE ?"
+        params.append(f"%{usuario}%")
+    if data_inicio:
+        query += " AND conectado_em >= ?"
+        params.append(f"{data_inicio} 00:00:00")
+    if data_fim:
+        query += " AND conectado_em <= ?"
+        params.append(f"{data_fim} 23:59:59")
+        
+    query += " ORDER BY conectado_em DESC LIMIT 1000"
+    
+    with db_conn() as c:
+        rows = c.execute(query, params).fetchall()
+        
+    return jsonify([dict(r) for r in rows])
+
+@app.route('/api/relatorio/tempo-diario')
+@login_required
+def api_relatorio_tempo_diario():
+    env = request.args.get('env', '').strip()
+    usuario = request.args.get('usuario', '').strip()
+    data_inicio = request.args.get('data_inicio', '').strip()
+    data_fim = request.args.get('data_fim', '').strip()
+    
+    query = """
+        SELECT 
+            usuario,
+            env,
+            substr(conectado_em, 1, 10) as dia,
+            SUM(duracao_segundos) as total_segundos,
+            COUNT(id) as total_conexoes
+        FROM historico_conexoes 
+        WHERE 1=1
+    """
+    params = []
+    
+    if env:
+        query += " AND env = ?"
+        params.append(env)
+    if usuario:
+        query += " AND usuario LIKE ?"
+        params.append(f"%{usuario}%")
+    if data_inicio:
+        query += " AND conectado_em >= ?"
+        params.append(f"{data_inicio} 00:00:00")
+    if data_fim:
+        query += " AND conectado_em <= ?"
+        params.append(f"{data_fim} 23:59:59")
+        
+    query += " GROUP BY usuario, env, dia ORDER BY dia DESC, total_segundos DESC"
+    
+    with db_conn() as c:
+        rows = c.execute(query, params).fetchall()
+        
+    return jsonify([dict(r) for r in rows])
 
 @app.route('/')
 @login_required
