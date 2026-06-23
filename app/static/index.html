@@ -398,6 +398,23 @@ tbody tr:hover td { background: var(--s2) !important; }
       <h2><span class="ci ci-amber">&#128190;</span> Disco</h2>
       <div id="disk-bars"></div>
     </div>
+
+    <div class="card">
+      <h2><span class="ci ci-green">&#128202;</span> Recursos do Monitor</h2>
+      <div class="gauge-row">
+        <div class="gauge-label">CPU</div>
+        <div class="gauge-bar"><div class="gauge-fill ok" id="mon-cpu-bar" style="width:0%"></div></div>
+        <div class="gauge-val" id="mon-cpu-val">--</div>
+      </div>
+      <div class="stat-grid" style="margin-top:10px">
+        <div class="stat"><div class="val" id="mon-mem">--</div><div class="lbl">RAM MB</div></div>
+        <div class="stat"><div class="val" id="mon-mempct">--</div><div class="lbl">RAM %</div></div>
+      </div>
+      <div class="table-wrap" style="margin-top:10px"><table>
+        <thead><tr><th>Componente</th><th>PID</th><th>CPU%</th><th>RAM MB</th></tr></thead>
+        <tbody id="mon-table"></tbody>
+      </table></div>
+    </div>
   </div>
 
   <div class="sec">
@@ -907,6 +924,16 @@ async function refresh() {
     document.getElementById('load15').textContent = d.load_avg[2].toFixed(2);
     document.getElementById('cpu-cores').textContent = d.cpu.count;
 
+    // ── recursos do proprio monitor (dashboard flask + glances) ──
+    if (d.monitor) {
+      setGauge('mon-cpu-bar','mon-cpu-val', d.monitor.cpu_percent, d.monitor.cpu_percent+'%');
+      document.getElementById('mon-mem').textContent    = d.monitor.mem_mb;
+      document.getElementById('mon-mempct').textContent = d.monitor.mem_percent + '%';
+      document.getElementById('mon-table').innerHTML = (d.monitor.itens || []).map(it =>
+        `<tr><td><b>${it.nome}</b></td><td style="color:var(--muted)">${it.pid}</td><td>${it.cpu}%</td><td>${it.mem_mb}</td></tr>`
+      ).join('') || '<tr><td colspan="4" style="color:var(--muted)">--</td></tr>';
+    }
+
     setGauge('mem-bar','mem-val', d.memory.percent, d.memory.percent+'%');
     setGauge('swap-bar','swap-val', d.swap.percent, d.swap.percent+'%');
     push(memChart, d.memory.percent);
@@ -1058,20 +1085,11 @@ async function pollJob(jobKey, statusEl) {
 async function bancoAction(env, action) {
   const key = `${env}_${action}`;
   if (!confirm(ACTION_CONFIRMS[key])) return;
-
-  // Solicitar senha para ações destrutivas
-  let payload = {env, action};
-  if (action === 'derruba') {
-    const senha = prompt(`Digite a senha para derrubar bancos ${env}:`);
-    if (!senha) { showToast('Operação cancelada', 'info'); return; }
-    payload.senha = senha;
-  }
-
   try {
     const r = await fetch('/api/banco-action', {
       method: 'POST', credentials: 'include',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify(payload)
+      body: JSON.stringify({env, action})
     });
     const d = await r.json();
     if (!d.ok) { showToast(d.msg, 'error'); return; }

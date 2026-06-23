@@ -2,7 +2,7 @@
 export DLC=/usr/dlc128
 export PATH=$PATH:$DLC/bin
 
-BKP_DIR=/mnt/backup-progress/Backup-Progress/SP/8380
+BKP_DIR=/mnt/backup-progress/Backup-Progress/SP/8480
 LOG_DIR=$BKP_DIR/logs
 DATA=$(date +%Y-%m-%d)
 LOG=$LOG_DIR/backup-$DATA.log
@@ -18,7 +18,7 @@ if ! mountpoint -q /mnt/backup-progress; then
     exit 1
 fi
 
-cd /bancos/DATABASE-JA-8380
+cd /bancos/DATABASE-JA-8480
 
 for banco in dtviewer eai ems2adt ems2cad ems2mov ems2mp ems5cad ems5mov emsdes emsfnd emsinc hcm; do
     _log "--- backup: $banco ---"

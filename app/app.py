@@ -15,9 +15,9 @@ PROGRESS_PORTS = {
     'ems2mov': 23602, 'ems2mp': 23603, 'ems5cad': 23606, 'ems5mov': 23607,
     'emsdes': 23635, 'emsfnd': 23619, 'emsinc': 23009, 'hcm': 23608
 }
-BKP_LOG_DIR      = '/mnt/backup-progress/Backup-Progress/pp/logs'
-BKP_LOG_DIR_8480 = '/mnt/backup-progress/Backup-Progress/pp/8480/logs'
-BKP_LOG_DIR_8580 = '/mnt/backup-progress/Backup-Progress/pp/8580/logs'
+BKP_LOG_DIR      = '/mnt/backup-progress/Backup-Progress/SP/8380/logs'
+BKP_LOG_DIR_8480 = '/mnt/backup-progress/Backup-Progress/SP/8480/logs'
+BKP_LOG_DIR_8580 = '/mnt/backup-progress/Backup-Progress/SP/8580/logs'
 
 PROGRESS_PORTS_8480 = {
     'dtviewer': 24650, 'eai': 24621, 'ems2adt': 24600, 'ems2cad': 24601,
@@ -64,6 +64,56 @@ import threading
 _sys_metrics = {}
 _sys_metrics_lock = threading.Lock()
 
+# ── recursos do proprio monitor (dashboard flask + glances) ─────────────────────
+_monitor_proc_cache = {}  # pid -> psutil.Process (mantido p/ medir cpu_percent por delta)
+
+def _get_monitor_proc(pid):
+    p = _monitor_proc_cache.get(pid)
+    if p is None or not p.is_running():
+        try:
+            p = psutil.Process(pid)
+            p.cpu_percent(interval=None)  # primer: 1o call sempre retorna 0
+            _monitor_proc_cache[pid] = p
+        except psutil.NoSuchProcess:
+            _monitor_proc_cache.pop(pid, None)
+            return None
+    return p
+
+def collect_monitor_resources():
+    ncpu = psutil.cpu_count() or 1
+    alvos = {'Dashboard (Flask)': os.getpid()}  # processo atual = app do dashboard
+    for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+        try:
+            nome = proc.info.get('name') or ''
+            cmd  = ' '.join(proc.info.get('cmdline') or [])
+            if 'glances' in nome or 'glances' in cmd:
+                alvos['Glances'] = proc.info['pid']
+                break
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            continue
+    itens = []
+    total_cpu = 0.0
+    total_mem_mb = 0.0
+    for nome, pid in alvos.items():
+        p = _get_monitor_proc(pid)
+        if not p:
+            continue
+        try:
+            cpu = p.cpu_percent(interval=None) / ncpu  # normaliza p/ % do total de cpu
+            mem_mb = p.memory_info().rss / 1e6
+            itens.append({'nome': nome, 'pid': pid, 'cpu': round(cpu, 1),
+                          'mem_mb': round(mem_mb, 1), 'threads': p.num_threads(),
+                          'uptime_s': int(time.time() - p.create_time())})
+            total_cpu += cpu
+            total_mem_mb += mem_mb
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            continue
+    vm_total_mb = psutil.virtual_memory().total / 1e6
+    return {'itens': itens,
+            'cpu_percent': round(total_cpu, 1),
+            'mem_mb': round(total_mem_mb, 1),
+            'mem_percent': round(total_mem_mb / vm_total_mb * 100, 2) if vm_total_mb else 0}
+
 def _update_sys_metrics():
     # primer inicial do cpu_percent (primeiro call retorna 0)
     psutil.cpu_percent(interval=None, percpu=True)
@@ -81,6 +131,7 @@ def _update_sys_metrics():
                 _sys_metrics['swap']     = {'total_gb': round(sw.total/1e9,1), 'used_gb': round(sw.used/1e9,1), 'percent': sw.percent}
                 _sys_metrics['load_avg'] = list(os.getloadavg())
                 _sys_metrics['disk']     = get_disk_info()
+                _sys_metrics['monitor']  = collect_monitor_resources()
         except Exception:
             pass
 
@@ -618,6 +669,7 @@ def _base_metrics():
             'swap':       _sys_metrics.get('swap',     {'total_gb':0,'used_gb':0,'percent':0}),
             'load_avg':   _sys_metrics.get('load_avg', [0,0,0]),
             'disk':       _sys_metrics.get('disk',     []),
+            'monitor':    _sys_metrics.get('monitor',  {'itens':[],'cpu_percent':0,'mem_mb':0,'mem_percent':0}),
         }
 
 @app.route('/api/metrics')
@@ -863,14 +915,6 @@ def banco_action():
     action = data.get('action', '')
     if env not in BANCO_SCRIPTS or action not in BANCO_SCRIPTS[env]:
         return jsonify({'ok': False, 'msg': 'Acao ou ambiente invalido'}), 400
-
-    # Validar senha para ações destrutivas (derruba)
-    if action == 'derruba':
-        senha = data.get('senha', '')
-        senha_correta = f'derrubadb{env}'
-        if senha != senha_correta:
-            return jsonify({'ok': False, 'msg': 'Senha incorreta para derrubar bancos'}), 403
-
     script = BANCO_SCRIPTS[env][action]
     job_key = f"{env}_{action}"
     if _banco_job.get(job_key, {}).get('status') == 'running':
@@ -878,11 +922,7 @@ def banco_action():
     def _run():
         _banco_job[job_key] = {'status': 'running', 'log': [], 'started': time.strftime('%H:%M:%S')}
         try:
-            # Passar senha como argumento para scripts de derruba
-            cmd = ['sudo', script]
-            if action == 'derruba':
-                cmd.append(senha)
-            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+            proc = subprocess.Popen(['sudo', script], stdout=subprocess.PIPE,
                                     stderr=subprocess.STDOUT, text=True)
             for line in proc.stdout:
                 _banco_job[job_key]['log'].append(line.rstrip())

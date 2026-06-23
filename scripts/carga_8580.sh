@@ -1,7 +1,4 @@
 #!/bin/bash
-# ⚠️ SEMPRE EXECUTAR COMO ROOT
-# Este script sobe todos os bancos Progress 8580 (HML)
-# Uso: sudo ./carga_8580.sh  (via monitor) ou manualmente
 export DLC=/usr/dlc128; export PATH=$DLC/bin:$PATH
 DB_DIR=/bancos/DATABASE-JA-8580
 echo "=== CARGA 8580: $(date) ==="
