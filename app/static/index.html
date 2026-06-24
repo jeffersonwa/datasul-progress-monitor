@@ -759,7 +759,10 @@ tbody tr:hover td { background: var(--s2) !important; }
   <div class="grid-2">
     <!-- Bloco 1: Tempo Consolidado por Dia -->
     <div class="card">
-      <h2><span class="ci ci-blue">&#128337;</span> Tempo de Conexão Consolidado por Dia</h2>
+      <h2 style="display: flex; justify-content: space-between; align-items: center;">
+        <span><span class="ci ci-blue">&#128337;</span> Tempo de Conexão Consolidado por Dia</span>
+        <button class="btn-primary btn-sm" onclick="exportarConsolidadoCSV()" style="padding:4px 10px; font-size:11px;">Exportar CSV</button>
+      </h2>
       <div class="table-wrap" style="max-height: 400px; overflow-y: auto;">
         <table>
           <thead>
@@ -774,7 +777,10 @@ tbody tr:hover td { background: var(--s2) !important; }
 
     <!-- Bloco 2: Histórico Detalhado de Conexões -->
     <div class="card">
-      <h2><span class="ci ci-green">&#128101;</span> Log de Sessões Históricas (Últimas 1000)</h2>
+      <h2 style="display: flex; justify-content: space-between; align-items: center;">
+        <span><span class="ci ci-green">&#128101;</span> Log de Sessões Históricas (Últimas 1000)</span>
+        <button class="btn-primary btn-sm" onclick="exportarDetalhadoCSV()" style="padding:4px 10px; font-size:11px;">Exportar CSV</button>
+      </h2>
       <div class="table-wrap" style="max-height: 400px; overflow-y: auto;">
         <table>
           <thead>
@@ -1542,6 +1548,9 @@ function switchTab(tab) {
 }
 
 // ── relatorios ───────────────────────────────────────────────────────────────
+let conexoesAtuais = [];
+let temposAtuais = [];
+
 function formatarSegundos(segundos) {
   if (!segundos || segundos < 0) return '00:00:00';
   const hrs = Math.floor(segundos / 3600);
@@ -1566,6 +1575,7 @@ async function carregarRelatorios() {
     // 1. Carregar detalhe de conexões
     const rCon = await fetch(`/api/relatorio/conexoes?${params}`, { credentials: 'include' });
     const conexoes = await rCon.json();
+    conexoesAtuais = conexoes; // Salva para exportação
     const tbodyDet = document.getElementById('tbl-conexoes-detalhe');
     
     if (conexoes.length === 0) {
@@ -1589,6 +1599,7 @@ async function carregarRelatorios() {
     // 2. Carregar tempo diário consolidado
     const rTempo = await fetch(`/api/relatorio/tempo-diario?${params}`, { credentials: 'include' });
     const tempos = await rTempo.json();
+    temposAtuais = tempos; // Salva para exportação
     const tbodyTempo = document.getElementById('tbl-tempo-diario');
 
     if (tempos.length === 0) {
@@ -1597,7 +1608,7 @@ async function carregarRelatorios() {
       tbodyTempo.innerHTML = tempos.map(t => {
         return `<tr>
           <td><b>${t.dia}</b></td>
-          <td><b style="color:var(--blue);">${t.usuario}</b></td>
+          <td><b style="color:var(--blue); cursor:pointer; text-decoration:underline;" onclick="filtrarPorUsuario('${t.usuario}')">${t.usuario}</b></td>
           <td><span style="font-size:10px; color:var(--muted);">${t.env}</span></td>
           <td style="text-align:center;">${t.total_conexoes}</td>
           <td><b style="color:var(--green);">${formatarSegundos(t.total_segundos)}</b></td>
@@ -1607,6 +1618,50 @@ async function carregarRelatorios() {
   } catch (e) {
     showToast('Erro ao carregar relatórios', 'error');
   }
+}
+
+function filtrarPorUsuario(usuario) {
+  document.getElementById('filt-usuario').value = usuario;
+  carregarRelatorios();
+}
+
+function baixarCSV(conteudo, nomeArquivo) {
+  const blob = new Blob(['\ufeff' + conteudo], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.setAttribute('href', url);
+  link.setAttribute('download', nomeArquivo);
+  link.style.visibility = 'hidden';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+function exportarConsolidadoCSV() {
+  if (!temposAtuais || temposAtuais.length === 0) {
+    showToast('Nenhum dado para exportar', 'warning');
+    return;
+  }
+  let csv = 'Dia;Usuario;Ambiente;Total Conexoes;Tempo Total (Segundos);Tempo Total (Formatado)\n';
+  temposAtuais.forEach(t => {
+    csv += `${t.dia};${t.usuario};${t.env};${t.total_conexoes};${t.total_segundos};${formatarSegundos(t.total_segundos)}\n`;
+  });
+  baixarCSV(csv, 'tempo_consolidado_diario.csv');
+}
+
+function exportarDetalhadoCSV() {
+  if (!conexoesAtuais || conexoesAtuais.length === 0) {
+    showToast('Nenhum dado para exportar', 'warning');
+    return;
+  }
+  let csv = 'Usuario;Banco;Ambiente;Workstation;Conectado Em;Desconectado Em;Duracao (Segundos);Duracao (Formatada)\n';
+  conexoesAtuais.forEach(c => {
+    const desc = c.desconectado_em ? c.desconectado_em : 'ATIVO';
+    const duracaoSeg = c.desconectado_em ? c.duracao_segundos : '0';
+    const duracaoForm = c.desconectado_em ? formatarSegundos(c.duracao_segundos) : '--';
+    csv += `${c.usuario};${c.db};${c.env};${c.workstation};${c.conectado_em};${desc};${duracaoSeg};${duracaoForm}\n`;
+  });
+  baixarCSV(csv, 'historico_detalhado_conexoes.csv');
 }
 
 // ── crud usuarios ─────────────────────────────────────────────────────────────

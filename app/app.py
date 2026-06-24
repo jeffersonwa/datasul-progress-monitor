@@ -187,18 +187,36 @@ def _get_monitor_proc(pid):
             return None
     return p
 
+_glances_pid = None
+
 def collect_monitor_resources():
+    global _glances_pid
     ncpu = psutil.cpu_count() or 1
     alvos = {'Dashboard (Flask)': os.getpid()}  # processo atual = app do dashboard
-    for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+    
+    glances_valido = False
+    if _glances_pid is not None:
         try:
-            nome = proc.info.get('name') or ''
-            cmd  = ' '.join(proc.info.get('cmdline') or [])
+            proc = psutil.Process(_glances_pid)
+            nome = proc.name()
+            cmd = ' '.join(proc.cmdline())
             if 'glances' in nome or 'glances' in cmd:
-                alvos['Glances'] = proc.info['pid']
-                break
-        except (psutil.NoSuchProcess, psutil.AccessDenied):
-            continue
+                glances_valido = True
+                alvos['Glances'] = _glances_pid
+        except:
+            _glances_pid = None
+            
+    if not glances_valido:
+        for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+            try:
+                nome = proc.info.get('name') or ''
+                cmd  = ' '.join(proc.info.get('cmdline') or [])
+                if 'glances' in nome or 'glances' in cmd:
+                    _glances_pid = proc.info['pid']
+                    alvos['Glances'] = _glances_pid
+                    break
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                continue
     itens = []
     total_cpu = 0.0
     total_mem_mb = 0.0
@@ -1058,7 +1076,7 @@ def api_relatorio_conexoes():
     data_inicio = request.args.get('data_inicio', '').strip()
     data_fim = request.args.get('data_fim', '').strip()
     
-    query = "SELECT * FROM historico_conexoes WHERE 1=1"
+    query = "SELECT * FROM historico_conexoes WHERE db = 'emsfnd' AND usuario NOT IN ('--', 'MULTI-SESSION')"
     params = []
     
     if env:
@@ -1095,9 +1113,9 @@ def api_relatorio_tempo_diario():
             env,
             substr(conectado_em, 1, 10) as dia,
             SUM(duracao_segundos) as total_segundos,
-            COUNT(id) as total_conexoes
-        FROM historico_conexoes 
-        WHERE 1=1
+            COUNT(*) as total_conexoes
+        FROM historico_conexoes
+        WHERE db = 'emsfnd' AND usuario NOT IN ('--', 'MULTI-SESSION')
     """
     params = []
     
